@@ -8,7 +8,7 @@ Concrete implementation of a Bittensor validator that queries miners using the
 from __future__ import annotations
 
 import time
-from typing import List
+from typing import Any, Dict, List, Mapping, Tuple
 
 import bittensor as bt
 
@@ -25,6 +25,123 @@ class Validator(BaseValidatorNeuron):
     OpenMind validator neuron.
     """
 
+    def __init__(self, config=None):
+        super().__init__(config=config)
+
+        # Ground-truth state for challenges.
+        self._retrieval_probes: Dict[str, List[str]] = {}
+        self._storage_challenges: Dict[str, str] = {}
+        self._version_challenges: Dict[str, Dict[str, Any]] = {}
+        # Pool of real chunk IDs observed in miner responses.
+        self._known_chunk_ids: List[str] = []
+
+    def _current_challenge_id(self) -> str:
+        return f"step-{int(self.step)}"
+
+    def _build_retrieval_challenge(self) -> Tuple[str, List[str]]:
+        """
+        Build a retrieval ground truth based on *real* chunk IDs observed in
+        prior miner responses.
+
+        The validator maintains a rolling pool of known chunk IDs taken from
+        `result["id"]` fields. For each challenge we sample a small subset from
+        this pool; these are the probes used to compute recall.
+        """
+        challenge_id = self._current_challenge_id()
+
+        # If we have no known IDs yet, this challenge cannot compute recall.
+        # We still register an empty probe list so the code path is uniform.
+        if not self._known_chunk_ids:
+            probes: List[str] = []
+        else:
+            # Sample up to 5 unique IDs from the pool.
+            unique_ids = list(dict.fromkeys(self._known_chunk_ids))
+            k = min(5, len(unique_ids))
+            probes = unique_ids[:k]
+
+        self._retrieval_probes[challenge_id] = probes
+        return challenge_id, probes
+
+    def _compute_retrieval_recall(
+        self, response: Any, probes: List[str]
+    ) -> float:
+        """
+        Compute recall over a simple set of probe IDs.
+        Expects each result to optionally expose an 'id' field.
+        """
+        results = getattr(response, "results", None)
+        if results is None and isinstance(response, Mapping):
+            results = response.get("results")
+        if not results:
+            return 0.0
+
+        returned_ids = {
+            r.get("id")
+            for r in results
+            if isinstance(r, Mapping) and "id" in r
+        }
+        if not returned_ids:
+            return 0.0
+
+        hits = len(set(probes) & returned_ids)
+        return float(hits) / float(len(probes)) if probes else 0.0
+
+    def _metrics_from_responses(
+        self,
+        mode: int,
+        responses: List[Any],
+        per_uid_latency_ms: List[float],
+        challenge_id: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Convert raw miner responses into metric dicts understood by
+        `openmind.scoring.reward`.
+        """
+        metrics_list: List[Dict[str, Any]] = []
+
+        probes = self._retrieval_probes.get(challenge_id, [])
+
+        for resp, latency in zip(responses, per_uid_latency_ms):
+            metrics: Dict[str, Any] = {}
+
+            # Defaults.
+            metrics["storage_ok"] = False
+            metrics["retrieval_recall"] = 0.0
+            metrics["version_ok"] = False
+            metrics["checkpoint_ok"] = False
+            metrics["latency_ms"] = latency
+
+            # Mode 0: retrieval-focused metrics.
+            if mode == 0:
+                metrics["retrieval_recall"] = self._compute_retrieval_recall(
+                    resp, probes
+                )
+
+            # Mode 1: storage / durability possession challenge (stub).
+            # In a future iteration, miners will return hashes or reconstructed
+            # bytes to prove possession; for now we treat any non-empty results
+            # as a weak storage signal.
+            if mode == 1:
+                results = getattr(resp, "results", None)
+                if results is None and isinstance(resp, Mapping):
+                    results = resp.get("results")
+                metrics["storage_ok"] = bool(results)
+
+            # Mode 2: versioning / checkpoint correctness (stub).
+            # Once miners support full as_of/version_id/checkpoint flows,
+            # validators will populate these based on scripted sequences.
+            if mode == 2:
+                version_ok = getattr(resp, "version_ok", None)
+                checkpoint_ok = getattr(resp, "checkpoint_ok", None)
+                if version_ok is not None:
+                    metrics["version_ok"] = bool(version_ok)
+                if checkpoint_ok is not None:
+                    metrics["checkpoint_ok"] = bool(checkpoint_ok)
+
+            metrics_list.append(metrics)
+
+        return metrics_list
+
     async def forward(self):
         """
         Validator forward pass modelled after the template's forward loop.
@@ -33,6 +150,12 @@ class Validator(BaseValidatorNeuron):
         - Queries miners via dendrite.
         - Scores responses and updates moving-average scores.
         """
+        # Decide challenge mode based on step to exercise different behaviours.
+        # 0: retrieval-focused; 1: storage/durability; 2: versioning/checkpoint.
+        mode = int(self.step) % 3
+
+        challenge_id, probes = self._build_retrieval_challenge()
+
         # Sample which miners to query.
         miner_uids: List[int] = get_random_uids(
             self, k=self.config.neuron.sample_size
@@ -43,21 +166,47 @@ class Validator(BaseValidatorNeuron):
             session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
             query=f"step-{self.step}",
             top_k=10,
+            filters={"challenge_mode": mode},
         )
 
-        # Query selected miner axons.
+        # Query selected miner axons and capture basic latency per miner.
+        start = time.time()
         responses = await self.dendrite(
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
             synapse=synapse,
             deserialize=True,
         )
+        elapsed_ms = (time.time() - start) * 1000.0
+        per_uid_latency_ms = [elapsed_ms for _ in miner_uids]
 
         bt.logging.info(f"Received responses: {responses}")
 
-        # Compute rewards based on responses.
+        # Update known chunk IDs pool from actual miner results so future
+        # retrieval challenges use real stored chunks as probes.
+        for resp in responses:
+            results = getattr(resp, "results", None)
+            if results is None and isinstance(resp, Mapping):
+                results = resp.get("results")
+            if not results:
+                continue
+
+            for r in results:
+                if isinstance(r, Mapping) and "id" in r:
+                    cid = r["id"]
+                    if isinstance(cid, str):
+                        self._known_chunk_ids.append(cid)
+
+        # Compute metric dicts and rewards based on responses.
+        metrics = self._metrics_from_responses(
+            mode=mode,
+            responses=responses,
+            per_uid_latency_ms=per_uid_latency_ms,
+            challenge_id=challenge_id,
+        )
+
         rewards = get_rewards(
             step=self.step,
-            responses=responses,
+            responses=metrics,
         )
 
         bt.logging.info(f"Scored responses: {rewards}")
