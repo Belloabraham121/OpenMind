@@ -7,12 +7,11 @@ Concrete implementation of a Bittensor validator that queries miners using the
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Dict, List, Mapping, Tuple
 
 import bittensor as bt
-
-from template.base.validator import BaseValidatorNeuron
 
 from openmind.protocol import OpenMindRequest
 from openmind.checkpoint import save_checkpoint
@@ -20,13 +19,52 @@ from openmind.scoring import get_rewards
 from openmind.utils.uids import get_random_uids
 
 
-class Validator(BaseValidatorNeuron):
+class Validator:
     """
     OpenMind validator neuron.
     """
 
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    def __init__(self, config: bt.Config | None = None):
+        """
+        Minimal validator implementation without relying on the template base
+        classes. Sets up wallet, subtensor, metagraph, and dendrite.
+        """
+        self.config = config or bt.Config()
+
+        # Core Bittensor components (using SDK v10 classes).
+        self.wallet = bt.Wallet(config=self.config)
+
+        try:
+            self.subtensor = bt.Subtensor(config=self.config)
+        except Exception as e:  # pragma: no cover - environment dependent
+            bt.logging.error(f"Failed to create Subtensor for validator: {e}")
+            self.subtensor = None
+
+        if self.subtensor is not None:
+            try:
+                self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
+            except Exception as e:  # pragma: no cover - environment dependent
+                bt.logging.error(f"Failed to sync metagraph for validator: {e}")
+                self.metagraph = None
+        else:
+            self.metagraph = None
+
+        # Dendrite client for querying miners.
+        try:
+            self.dendrite = bt.Dendrite(wallet=self.wallet)
+        except Exception as e:  # pragma: no cover - environment dependent
+            bt.logging.error(f"Failed to create Dendrite for validator: {e}")
+            self.dendrite = None
+
+        # Internal validation state.
+        self.step: int = 0
+
+        # Per-miner EMA scores.
+        self.scores = (
+            [0.0 for _ in range(len(self.metagraph.uids))]
+            if self.metagraph is not None
+            else []
+        )
 
         # Ground-truth state for challenges.
         self._retrieval_probes: Dict[str, List[str]] = {}
@@ -156,6 +194,10 @@ class Validator(BaseValidatorNeuron):
 
         challenge_id, probes = self._build_retrieval_challenge()
 
+        if self.metagraph is None or self.dendrite is None:
+            bt.logging.warning("Metagraph or Dendrite not available; skipping forward step.")
+            return
+
         # Sample which miners to query.
         miner_uids: List[int] = get_random_uids(
             self, k=self.config.neuron.sample_size
@@ -222,18 +264,34 @@ class Validator(BaseValidatorNeuron):
             },
         )
 
-        # Update scores and sleep for a bit.
-        self.update_scores(rewards, miner_uids)
-        time.sleep(5)
+        # Update scores with EMA behaviour.
+        alpha = 0.5  # simple fixed EMA factor for now
+        for uid, r in zip(miner_uids, rewards):
+            old = self.scores[uid]
+            self.scores[uid] = alpha * float(r) + (1.0 - alpha) * old
+
+        bt.logging.info(f"Updated EMA scores (sample): {self.scores[:5]}")
+
+    def run(self) -> None:
+        """
+        Main loop: repeatedly run forward passes and update scores.
+        """
+        bt.logging.info("OpenMind validator starting.")
+        loop = asyncio.get_event_loop()
+
+        try:
+            while True:
+                bt.logging.info(f"Validator step {self.step}")
+                loop.run_until_complete(self.forward())
+                self.step += 1
+        except KeyboardInterrupt:
+            bt.logging.info("OpenMind validator shutting down.")
 
 
 def run() -> None:
     """
     Main entrypoint used by `python neuron.py --role validator`.
     """
-    with Validator() as validator:
-        while True:
-            bt.logging.info(f"OpenMind validator running... {time.time()}")
-            time.sleep(5)
-
+    validator = Validator()
+    validator.run()
 
