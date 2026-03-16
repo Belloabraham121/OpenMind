@@ -50,6 +50,21 @@ def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / denom)
 
 
+def enrich_with_graph(
+    results: List[Dict[str, Any]],
+    graph_hops: int = 0,
+    graph_filters: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Stub for future graph-enriched retrieval.
+
+    Currently this is a no-op that simply returns `results` unchanged, but it
+    establishes the API surface for later integration with a knowledge graph.
+    """
+    _ = graph_hops, graph_filters
+    return results
+
+
 def retrieve(
     session_id: str,
     query: Optional[str],
@@ -66,6 +81,7 @@ def retrieve(
     - restricts to `session_id`
     - applies exact-match metadata filters
     - ranks by cosine similarity if an embedding is provided
+    - passes results through `enrich_with_graph` (currently a no-op)
     """
     candidates = [c for c in _CHUNKS if c.session_id == session_id]
 
@@ -75,7 +91,7 @@ def retrieve(
 
     if embedding is None or len(candidates) == 0:
         # No vector query; just return the latest up to top_k.
-        return [
+        base = [
             {
                 "content": c.content,
                 "score": 0.0,
@@ -83,6 +99,7 @@ def retrieve(
             }
             for c in candidates[:top_k]
         ]
+        return enrich_with_graph(base)
 
     q_vec = np.array(embedding, dtype=np.float32)
 
@@ -92,7 +109,7 @@ def retrieve(
     ]
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    return [
+    base = [
         {
             "content": c.content,
             "score": score,
@@ -100,4 +117,5 @@ def retrieve(
         }
         for c, score in scored[:top_k]
     ]
+    return enrich_with_graph(base)
 

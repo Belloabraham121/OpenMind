@@ -47,5 +47,14 @@ def reconstruct_rs_10_4(shards: List[bytes]) -> bytes:
     """
     rs = reedsolo.RSCodec(4)
     encoded = b"".join(shards)
-    return bytes(rs.decode(encoded))
+    decoded = rs.decode(encoded)
+
+    # `reedsolo.RSCodec.decode` may return:
+    # - decoded bytes
+    # - (decoded, ecc)
+    # - (decoded, ecc, errata_pos, errata_val)
+    # Normalise by always taking the first element if it's a sequence.
+    if isinstance(decoded, (tuple, list)):
+        decoded = decoded[0]
+    return bytes(decoded)
 
