@@ -1,0 +1,4 @@
+bitarray>=2.9.0
+reedsolo>=1.7.0
+numpy>=1.26.0
+
