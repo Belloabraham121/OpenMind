@@ -15,6 +15,7 @@ import bittensor as bt
 from template.base.validator import BaseValidatorNeuron
 
 from openmind.protocol import OpenMindRequest
+from openmind.checkpoint import save_checkpoint
 from openmind.scoring import get_rewards
 from openmind.utils.uids import get_random_uids
 
@@ -60,6 +61,17 @@ class Validator(BaseValidatorNeuron):
         )
 
         bt.logging.info(f"Scored responses: {rewards}")
+
+        # Save a simple checkpoint for this forward step.
+        save_checkpoint(
+            workflow_id=f"wf-{self.wallet.hotkey.ss58_address}",
+            step=int(self.step),
+            state={
+                "variables": {"sample_size": self.config.neuron.sample_size},
+                "tool_results": responses,
+                "decisions": [f"queried_{len(miner_uids)}_miners"],
+            },
+        )
 
         # Update scores and sleep for a bit.
         self.update_scores(rewards, miner_uids)
