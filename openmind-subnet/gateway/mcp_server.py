@@ -59,6 +59,7 @@ async def _get(path: str) -> dict:
 async def openmind_store(
     session_id: str,
     content: str,
+    role: str = "user",
     tier: str = "basic",
     multimodal_type: Optional[str] = None,
 ) -> str:
@@ -67,12 +68,14 @@ async def openmind_store(
     Args:
         session_id: Unique session identifier (scopes the memory).
         content: The text content to store.
+        role: Who produced the content — "user", "assistant", or "system".
         tier: Durability tier — "basic" (replicated) or "premium" (Reed-Solomon).
         multimodal_type: Optional — "text", "image", or "pdf".
     """
     result = await _post("/v1/memory/store", {
         "session_id": session_id,
         "content": content,
+        "role": role,
         "tier": tier,
         "multimodal_type": multimodal_type,
     })

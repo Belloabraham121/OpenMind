@@ -174,7 +174,7 @@ async def memory_store(body: StoreRequest):
         session_id=body.session_id,
         query=body.content,
         embedding=body.embedding,
-        filters={**body.filters, "_action": "store"},
+        filters={**body.filters, "_action": "store", "_role": body.role},
         tier=body.tier,
         multimodal_type=body.multimodal_type,
         shared_space_id=body.shared_space_id,

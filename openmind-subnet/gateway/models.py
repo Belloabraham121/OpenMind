@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 class StoreRequest(BaseModel):
     session_id: str
     content: str
+    role: str = "user"
     tier: str = "basic"
     multimodal_type: Optional[str] = None
     embedding: Optional[List[float]] = None

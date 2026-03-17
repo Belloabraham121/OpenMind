@@ -125,21 +125,24 @@ class Miner:
             chunk_id = str(uuid.uuid4())
             ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
             content = synapse.query or ""
+            role = (synapse.filters or {}).get("_role", "user")
             retrieval.add_chunk(
                 session_id=synapse.session_id,
                 content=content,
                 embedding=synapse.embedding or [],
                 metadata={
                     "id": chunk_id,
+                    "role": role,
                     "timestamp": ts,
                     "tier": synapse.tier,
                     "multimodal_type": synapse.multimodal_type,
                 },
             )
-            bt.logging.info(f"Stored chunk {chunk_id} for session {synapse.session_id}")
+            bt.logging.info(f"Stored chunk {chunk_id} ({role}) for session {synapse.session_id}")
             synapse.results = [{
                 "id": chunk_id,
                 "content": content,
+                "role": role,
                 "status": "stored",
                 "timestamp": ts,
             }]

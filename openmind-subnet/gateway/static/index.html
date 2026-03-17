@@ -17,6 +17,7 @@
     --accent-dim: #7c3aed;
     --green: #34d399;
     --red: #f87171;
+    --blue: #60a5fa;
     --radius: 8px;
   }
 
@@ -30,7 +31,6 @@
     overflow: hidden;
   }
 
-  /* ---- Header ---- */
   header {
     display: flex;
     align-items: center;
@@ -40,161 +40,97 @@
     background: var(--surface);
     flex-shrink: 0;
   }
-  header h1 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--accent);
-  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
   header h1 span { color: var(--muted); font-weight: 400; }
   .health-dot {
     width: 10px; height: 10px; border-radius: 50%;
-    background: var(--red);
-    flex-shrink: 0;
-    transition: background 0.3s;
+    background: var(--red); flex-shrink: 0; transition: background 0.3s;
   }
   .health-dot.ok { background: var(--green); }
   .health-label { font-size: 12px; color: var(--muted); }
   .spacer { flex: 1; }
   .session-input {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 6px 12px;
-    border-radius: var(--radius);
-    font-size: 13px;
-    width: 220px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 12px; border-radius: var(--radius); font-size: 13px; width: 220px;
   }
   .session-input:focus { outline: none; border-color: var(--accent-dim); }
 
-  /* ---- Main layout ---- */
-  main {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-  }
+  main { display: flex; flex: 1; min-height: 0; }
 
   /* ---- Chat panel ---- */
-  .chat-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border);
-  }
+  .chat-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
   .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex: 1; overflow-y: auto; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 10px;
   }
   .msg {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: var(--radius);
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
+    max-width: 80%; padding: 10px 14px; border-radius: var(--radius);
+    font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
   }
   .msg.user {
-    align-self: flex-end;
-    background: var(--accent-dim);
-    color: #fff;
+    align-self: flex-end; background: var(--accent-dim); color: #fff;
     border-bottom-right-radius: 2px;
   }
+  .msg.assistant {
+    align-self: flex-start; background: #1e3a5f; color: var(--blue);
+    border: 1px solid #2563eb33; border-bottom-left-radius: 2px;
+  }
   .msg.system {
-    align-self: flex-start;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 13px;
-    border-bottom-left-radius: 2px;
+    align-self: flex-start; background: var(--surface);
+    border: 1px solid var(--border); color: var(--muted);
+    font-size: 13px; border-bottom-left-radius: 2px;
+  }
+  .msg-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 4px; opacity: 0.7;
   }
   .chat-input-row {
-    display: flex;
-    gap: 8px;
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
+    display: flex; gap: 8px; padding: 12px 20px;
+    border-top: 1px solid var(--border); background: var(--surface);
   }
   .chat-input {
-    flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 14px;
-    border-radius: var(--radius);
-    font-size: 14px;
-    resize: none;
-    font-family: inherit;
+    flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: var(--radius); font-size: 14px;
+    resize: none; font-family: inherit;
   }
   .chat-input:focus { outline: none; border-color: var(--accent-dim); }
   .btn {
-    background: var(--accent-dim);
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
+    background: var(--accent-dim); color: #fff; border: none;
+    padding: 10px 20px; border-radius: var(--radius); font-size: 14px;
+    font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap;
   }
   .btn:hover { background: var(--accent); }
   .btn:disabled { opacity: 0.4; cursor: default; }
-  .btn-outline {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-  }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
   .btn-outline:hover { background: var(--surface); border-color: var(--accent-dim); }
 
   /* ---- Memory panel ---- */
-  .memory-panel {
-    width: 400px;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-  }
+  .memory-panel { width: 420px; display: flex; flex-direction: column; flex-shrink: 0; }
   .memory-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface);
   }
   .memory-header h2 { font-size: 14px; font-weight: 600; }
   .memory-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex: 1; overflow-y: auto; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 8px;
   }
   .memory-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    font-size: 13px;
-    line-height: 1.5;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px; font-size: 13px; line-height: 1.5;
   }
-  .memory-item .meta {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 6px;
+  .memory-item.role-user { border-left: 3px solid var(--accent-dim); }
+  .memory-item.role-assistant { border-left: 3px solid var(--blue); }
+  .memory-item .role-tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 1px 6px; border-radius: 3px; margin-bottom: 4px;
   }
-  .empty-state {
-    color: var(--muted);
-    font-size: 13px;
-    text-align: center;
-    padding: 40px 16px;
-  }
+  .memory-item .role-tag.user { background: var(--accent-dim); color: #fff; }
+  .memory-item .role-tag.assistant { background: #2563eb44; color: var(--blue); }
+  .memory-item .role-tag.system { background: var(--border); color: var(--muted); }
+  .memory-item .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 16px; }
 
   @media (max-width: 768px) {
     main { flex-direction: column; }
@@ -217,7 +153,7 @@
 <main>
   <section class="chat-panel">
     <div class="chat-messages" id="chatMessages">
-      <div class="msg system">Welcome to OpenMind. Type a message to store it on the decentralised memory subnet.</div>
+      <div class="msg system">Welcome to OpenMind. Type a message to store it on the decentralised memory subnet. Your messages and AI responses are both persisted.</div>
     </div>
     <div class="chat-input-row">
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="Type a memory to store..."></textarea>
@@ -227,7 +163,7 @@
 
   <section class="memory-panel">
     <div class="memory-header">
-      <h2>Stored Memories</h2>
+      <h2>Conversation History</h2>
       <button class="btn btn-outline" onclick="refreshMemories()" id="refreshBtn">Refresh</button>
     </div>
     <div class="memory-list" id="memoryList">
@@ -250,34 +186,49 @@ function getSession() {
   return sessionInput.value.trim() || "demo-session";
 }
 
-function addMsg(text, cls) {
+function addMsg(text, cls, label) {
   const d = document.createElement("div");
   d.className = "msg " + cls;
-  d.textContent = text;
+  if (label) {
+    const lbl = document.createElement("div");
+    lbl.className = "msg-label";
+    lbl.textContent = label;
+    d.appendChild(lbl);
+  }
+  const span = document.createElement("span");
+  span.textContent = text;
+  d.appendChild(span);
   chatMessages.appendChild(d);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function storeOnSubnet(content, role) {
+  const res = await fetch(API + "/v1/memory/store", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: getSession(), content: content, role: role }),
+  });
+  return await res.json();
 }
 
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
   chatInput.value = "";
-  addMsg(text, "user");
+  addMsg(text, "user", "You");
   sendBtn.disabled = true;
+
   try {
-    const res = await fetch(API + "/v1/memory/store", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: getSession(), content: text }),
-    });
-    const data = await res.json();
-    const results = data.results || [];
-    if (results.length > 0 && results[0].status === "stored") {
-      addMsg(`Stored on subnet (chunk ${results[0].id.slice(0, 8)}…)`, "system");
-    } else if (results.length > 0) {
-      addMsg(`Miner returned ${results.length} result(s).`, "system");
+    const storeResult = await storeOnSubnet(text, "user");
+    const stored = (storeResult.results || [])[0];
+
+    if (stored && stored.status === "stored") {
+      const aiResponse = "Acknowledged. Your memory has been stored on the OpenMind subnet "
+        + "(chunk " + stored.id.slice(0, 8) + "…). I can recall this in future sessions.";
+      addMsg(aiResponse, "assistant", "Assistant");
+      await storeOnSubnet(aiResponse, "assistant");
     } else {
-      addMsg("Sent to miners. (No results returned — miners may still be syncing.)", "system");
+      addMsg("Sent to miners. Awaiting confirmation.", "system");
     }
   } catch (e) {
     addMsg("Error: " + e.message, "system");
@@ -293,7 +244,7 @@ async function refreshMemories() {
     const res = await fetch(API + "/v1/memory/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: getSession(), query: "*", top_k: 50 }),
+      body: JSON.stringify({ session_id: getSession(), query: "*", top_k: 100 }),
     });
     const data = await res.json();
     const results = data.results || [];
@@ -301,21 +252,34 @@ async function refreshMemories() {
       memoryList.innerHTML = '<div class="empty-state">No memories found for this session.</div>';
     } else {
       memoryList.innerHTML = "";
-      results.forEach((r, i) => {
+      results.forEach((r) => {
         const item = document.createElement("div");
-        item.className = "memory-item";
-        const content = r.content || r.text || r.query || JSON.stringify(r);
+        const role = r.role || (r.metadata || {}).role || "user";
+        item.className = "memory-item role-" + role;
+
+        const tag = document.createElement("span");
+        tag.className = "role-tag " + role;
+        tag.textContent = role;
+        item.appendChild(tag);
+
+        const content = document.createElement("div");
+        content.textContent = r.content || r.text || JSON.stringify(r);
+        item.appendChild(content);
+
         const md = r.metadata || {};
         const id = r.id || md.id;
         const ts = r.timestamp || md.timestamp;
-        const meta = [];
-        if (id) meta.push(id.slice(0, 8) + "…");
-        if (ts) meta.push(ts);
-        if (md.tier) meta.push("tier: " + md.tier);
-        if (r.score !== undefined && r.score > 0) meta.push("score: " + Number(r.score).toFixed(3));
-        item.innerHTML =
-          '<div>' + escapeHtml(content) + '</div>' +
-          (meta.length ? '<div class="meta">' + escapeHtml(meta.join(" · ")) + '</div>' : '');
+        const metaParts = [];
+        if (id) metaParts.push(id.slice(0, 8) + "…");
+        if (ts) metaParts.push(ts);
+        if (md.tier) metaParts.push("tier: " + md.tier);
+        if (metaParts.length) {
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent = metaParts.join(" · ");
+          item.appendChild(meta);
+        }
+
         memoryList.appendChild(item);
       });
     }
@@ -339,7 +303,7 @@ async function pollHealth() {
     const ok = data.status === "ok" && data.subtensor && data.dendrite;
     healthDot.className = "health-dot" + (ok ? " ok" : "");
     healthLabel.textContent = ok
-      ? `n=${data.metagraph_n} · step ${data.validator_step}`
+      ? "n=" + data.metagraph_n + " · step " + data.validator_step
       : data.status || "offline";
   } catch {
     healthDot.className = "health-dot";
