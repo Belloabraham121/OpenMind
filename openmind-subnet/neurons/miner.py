@@ -5,10 +5,10 @@ Concrete implementation of a Bittensor miner that serves the `OpenMindRequest`
 synapse defined in `openmind.protocol`.
 """
 
-from __future__ import annotations
-
+import datetime
 import time
 import typing as t
+import uuid
 
 import bittensor as bt
 
@@ -32,39 +32,67 @@ class Miner:
         """
         self.config = config or bt.Config()
 
-        # Standard Bittensor components (using SDK v10 classes).
-        self.wallet = bt.Wallet(config=self.config)
+        # Local dev defaults.
+        self.netuid = getattr(self.config, "netuid", None) or 2
+        self.chain_endpoint = "ws://127.0.0.1:9944"
+        self.wallet_name = "test-coldkey"
+        self.wallet_hotkey = "test-hotkey"
+        self.wallet_path = "~/Documents/bittensor-test-wallet"
+
+        # Standard Bittensor components — pass params directly to constructors
+        # so they don't rely on config namespace structure.
+        self.wallet = bt.Wallet(
+            name=self.wallet_name,
+            hotkey=self.wallet_hotkey,
+            path=self.wallet_path,
+        )
 
         try:
-            self.subtensor = bt.Subtensor(config=self.config)
-        except Exception as e:  # pragma: no cover - environment dependent
+            self.subtensor = bt.Subtensor(network=self.chain_endpoint)
+        except Exception as e:
             bt.logging.error(f"Failed to create Subtensor for miner: {e}")
             self.subtensor = None
 
         if self.subtensor is not None:
             try:
-                self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            except Exception as e:  # pragma: no cover - environment dependent
+                self.metagraph = self.subtensor.metagraph(netuid=self.netuid)
+            except Exception as e:
                 bt.logging.error(f"Failed to sync metagraph for miner: {e}")
                 self.metagraph = None
         else:
             self.metagraph = None
 
-        # Axon that will serve OpenMind requests. In constrained environments
-        # this may fail (e.g. when trying to discover external IP); we handle
-        # that gracefully and allow offline-only operation.
+        # Axon creation — pass ip/port explicitly to avoid the external IP
+        # lookup that fails in some environments.
+        # SDK v10 Axon.attach() inspects function type annotations and breaks
+        # on bound methods, so we wrap them as module-level-style closures.
+        _self = self
+
+        async def _forward(synapse: OpenMindRequest) -> OpenMindRequest:
+            return await _self.forward(synapse)
+
+        async def _blacklist(synapse: OpenMindRequest) -> t.Tuple[bool, str]:
+            return await _self.blacklist(synapse)
+
+        async def _priority(synapse: OpenMindRequest) -> float:
+            return await _self.priority(synapse)
+
         try:
             self.axon = bt.Axon(
                 wallet=self.wallet,
-                config=self.config,
+                ip="0.0.0.0",
+                port=8091,
+                external_ip="127.0.0.1",
+                external_port=8091,
             )
             self.axon.attach(
-                forward_fn=self.forward,
-                blacklist_fn=self.blacklist,
-                priority_fn=self.priority,
+                forward_fn=_forward,
+                blacklist_fn=_blacklist,
+                priority_fn=_priority,
             )
-        except Exception as e:  # pragma: no cover - environment dependent
-            bt.logging.error(f"Failed to create Axon for miner: {e}")
+        except Exception as e:
+            import traceback as _tb
+            bt.logging.error(f"Failed to create Axon for miner: {e}\n{_tb.format_exc()}")
             self.axon = None
 
         self.should_exit = False
@@ -91,19 +119,46 @@ class Miner:
                 synapse.results = []
                 return synapse
 
-        # TODO: integrate real encrypted storage + RS durability.
-        # For now, retrieval is a thin wrapper around a stubbed implementation.
-        synapse.results = retrieval.retrieve(
-            session_id=synapse.session_id,
-            query=synapse.query,
-            embedding=synapse.embedding,
-            top_k=synapse.top_k,
-            filters=synapse.filters,
-            tier=synapse.tier,
-            as_of_timestamp=synapse.as_of_timestamp,
-            version_id=synapse.version_id,
-            diff_since=synapse.diff_since,
-        )
+        action = (synapse.filters or {}).get("_action")
+
+        if action == "store":
+            chunk_id = str(uuid.uuid4())
+            ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            content = synapse.query or ""
+            retrieval.add_chunk(
+                session_id=synapse.session_id,
+                content=content,
+                embedding=synapse.embedding or [],
+                metadata={
+                    "id": chunk_id,
+                    "timestamp": ts,
+                    "tier": synapse.tier,
+                    "multimodal_type": synapse.multimodal_type,
+                },
+            )
+            bt.logging.info(f"Stored chunk {chunk_id} for session {synapse.session_id}")
+            synapse.results = [{
+                "id": chunk_id,
+                "content": content,
+                "status": "stored",
+                "timestamp": ts,
+            }]
+        else:
+            clean_filters = {
+                k: v for k, v in (synapse.filters or {}).items()
+                if not k.startswith("_")
+            }
+            synapse.results = retrieval.retrieve(
+                session_id=synapse.session_id,
+                query=synapse.query,
+                embedding=synapse.embedding,
+                top_k=synapse.top_k,
+                filters=clean_filters,
+                tier=synapse.tier,
+                as_of_timestamp=synapse.as_of_timestamp,
+                version_id=synapse.version_id,
+                diff_since=synapse.diff_since,
+            )
 
         # Versioning / provenance hooks (currently minimal).
         synapse.version_diff = None
@@ -119,33 +174,27 @@ class Miner:
 
     async def blacklist(self, synapse: OpenMindRequest) -> t.Tuple[bool, str]:
         """
-        Basic blacklist policy modelled after the template miner.
+        Basic blacklist policy.
+
+        For local development any hotkey registered in the metagraph is allowed.
+        In production, tighten this to require ``validator_permit``.
         """
         if self.metagraph is None:
-            bt.logging.warning("Metagraph not available; blacklisting by default.")
-            return True, "Metagraph unavailable"
+            bt.logging.warning("Metagraph not available; allowing request (local dev).")
+            return False, "Metagraph unavailable – allowing"
 
         if synapse.dendrite is None or synapse.dendrite.hotkey is None:
             bt.logging.warning("Received a request without a dendrite or hotkey.")
             return True, "Missing dendrite or hotkey"
 
-        uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-
-        # Simple policy: only allow registered validators.
         if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
             bt.logging.trace(
                 f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}"
             )
             return True, "Unrecognized hotkey"
 
-        if not self.metagraph.validator_permit[uid]:
-            bt.logging.warning(
-                f"Blacklisting a request from non-validator hotkey {synapse.dendrite.hotkey}"
-            )
-            return True, "Non-validator hotkey"
-
         bt.logging.trace(
-            f"Not blacklisting recognized validator hotkey {synapse.dendrite.hotkey}"
+            f"Allowing registered hotkey {synapse.dendrite.hotkey}"
         )
         return False, "Hotkey recognized!"
 
@@ -173,43 +222,47 @@ class Miner:
 def run() -> None:
     """
     Main entrypoint used by `python neuron.py --role miner`.
-
-    This function configures and serves a minimal axon without relying on the
-    Bittensor template base miner.
     """
+    bt.logging.set_debug()
+
     miner = Miner()
 
-    # If we could not create a Subtensor client, just start the axon locally
-    # without attempting to register on-chain. This avoids runtime errors in
-    # environments without chain access.
-    if miner.subtensor is not None and miner.axon is not None:  # pragma: no branch
-        try:
-            miner.subtensor.serve_axon(
-                netuid=miner.config.netuid,
-                axon=miner.axon,
-            )
-        except Exception as e:  # pragma: no cover - environment dependent
-            bt.logging.error(f"Failed to serve axon on-chain: {e}")
+    bt.logging.info(
+        f"OpenMind miner initialised "
+        f"(netuid={miner.netuid}, endpoint={miner.chain_endpoint})"
+    )
+
+    status_parts = []
+    status_parts.append(f"subtensor={'OK' if miner.subtensor else 'OFFLINE'}")
+    status_parts.append(f"metagraph={'OK' if miner.metagraph else 'UNAVAILABLE'}")
+    status_parts.append(f"axon={'OK' if miner.axon else 'UNAVAILABLE'}")
+    print(f"[MINER] Init status: {', '.join(status_parts)}")
 
     if miner.axon is not None:
         try:
             miner.axon.start()
-        except Exception as e:  # pragma: no cover - environment dependent
+            print(f"[MINER] Axon listening on {miner.axon.ip}:{miner.axon.port}")
+        except Exception as e:
             bt.logging.error(f"Failed to start axon: {e}")
 
-    bt.logging.info("OpenMind miner started (may be offline-only if chain unavailable).")
-
+    print("[MINER] Running main loop (Ctrl+C to stop)...")
     try:
         while True:
-            bt.logging.info(f"OpenMind miner running... {time.time()}")
-            time.sleep(5)
+            time.sleep(12)
+            if miner.subtensor is not None and miner.metagraph is not None:
+                try:
+                    miner.metagraph.sync(subtensor=miner.subtensor)
+                    bt.logging.info(f"Metagraph synced — n={miner.metagraph.n}")
+                except Exception as e:
+                    bt.logging.warning(f"Metagraph sync failed: {e}")
     except KeyboardInterrupt:
-        bt.logging.info("OpenMind miner shutting down.")
-        if miner.axon is not None:  # pragma: no branch
+        print("\n[MINER] Shutting down...")
+        if miner.axon is not None:
             try:
                 miner.axon.stop()
-            except Exception as e:  # pragma: no cover - environment dependent
-                bt.logging.error(f"Error while stopping axon: {e}")
+            except Exception:
+                pass
 
 
-
+if __name__ == "__main__":
+    run()

@@ -10,13 +10,26 @@ from typing import List
 import numpy as np
 
 
-def get_random_uids(self, k: int) -> List[int]:
+def get_random_uids(self, k: int, exclude_self: bool = True) -> List[int]:
     """
-    Sample up to `k` random UIDs from the current metagraph.
+    Sample up to `k` random miner UIDs from the current metagraph,
+    excluding the validator's own UID to avoid signature mismatches.
     """
     n = int(self.metagraph.n)
-    k = min(k, n)
-    if k <= 0 or n == 0:
+    all_uids = list(range(n))
+
+    if exclude_self:
+        try:
+            own_hotkey = self.wallet.hotkey.ss58_address
+            all_uids = [
+                uid for uid in all_uids
+                if self.metagraph.hotkeys[uid] != own_hotkey
+            ]
+        except Exception:
+            pass
+
+    k = min(k, len(all_uids))
+    if k <= 0:
         return []
-    return np.random.choice(n, size=k, replace=False).tolist()
+    return np.random.choice(all_uids, size=k, replace=False).tolist()
 

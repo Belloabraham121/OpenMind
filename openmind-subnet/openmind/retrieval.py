@@ -89,16 +89,17 @@ def retrieve(
     for key, value in filters.items():
         candidates = [c for c in candidates if c.metadata.get(key) == value]
 
+    def _to_result(chunk: MemoryChunk, score: float = 0.0) -> Dict[str, Any]:
+        return {
+            "id": chunk.metadata.get("id"),
+            "content": chunk.content,
+            "score": score,
+            "timestamp": chunk.metadata.get("timestamp"),
+            "metadata": chunk.metadata,
+        }
+
     if embedding is None or len(candidates) == 0:
-        # No vector query; just return the latest up to top_k.
-        base = [
-            {
-                "content": c.content,
-                "score": 0.0,
-                "metadata": c.metadata,
-            }
-            for c in candidates[:top_k]
-        ]
+        base = [_to_result(c) for c in candidates[:top_k]]
         return enrich_with_graph(base)
 
     q_vec = np.array(embedding, dtype=np.float32)
@@ -109,13 +110,6 @@ def retrieve(
     ]
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    base = [
-        {
-            "content": c.content,
-            "score": score,
-            "metadata": c.metadata,
-        }
-        for c, score in scored[:top_k]
-    ]
+    base = [_to_result(c, score) for c, score in scored[:top_k]]
     return enrich_with_graph(base)
 

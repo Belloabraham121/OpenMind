@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenMind — Memory Console</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e10;
+    --surface: #18181b;
+    --border: #27272a;
+    --text: #e4e4e7;
+    --muted: #71717a;
+    --accent: #a78bfa;
+    --accent-dim: #7c3aed;
+    --green: #34d399;
+    --red: #f87171;
+    --radius: 8px;
+  }
+
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---- Header ---- */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  header h1 span { color: var(--muted); font-weight: 400; }
+  .health-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .health-dot.ok { background: var(--green); }
+  .health-label { font-size: 12px; color: var(--muted); }
+  .spacer { flex: 1; }
+  .session-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    width: 220px;
+  }
+  .session-input:focus { outline: none; border-color: var(--accent-dim); }
+
+  /* ---- Main layout ---- */
+  main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ---- Chat panel ---- */
+  .chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent-dim);
+    color: #fff;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.system {
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    border-bottom-left-radius: 2px;
+  }
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    resize: none;
+    font-family: inherit;
+  }
+  .chat-input:focus { outline: none; border-color: var(--accent-dim); }
+  .btn {
+    background: var(--accent-dim);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { background: var(--surface); border-color: var(--accent-dim); }
+
+  /* ---- Memory panel ---- */
+  .memory-panel {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .memory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .memory-header h2 { font-size: 14px; font-weight: 600; }
+  .memory-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .memory-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .memory-item .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .empty-state {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 40px 16px;
+  }
+
+  @media (max-width: 768px) {
+    main { flex-direction: column; }
+    .memory-panel { width: 100%; border-top: 1px solid var(--border); }
+    .chat-panel { border-right: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OpenMind <span>Memory Console</span></h1>
+  <div class="spacer"></div>
+  <label style="font-size:12px;color:var(--muted);">Session:</label>
+  <input class="session-input" id="sessionId" value="demo-session" spellcheck="false">
+  <div class="health-dot" id="healthDot" title="Gateway status"></div>
+  <span class="health-label" id="healthLabel">connecting...</span>
+</header>
+
+<main>
+  <section class="chat-panel">
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg system">Welcome to OpenMind. Type a message to store it on the decentralised memory subnet.</div>
+    </div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chatInput" rows="1" placeholder="Type a memory to store..."></textarea>
+      <button class="btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+  </section>
+
+  <section class="memory-panel">
+    <div class="memory-header">
+      <h2>Stored Memories</h2>
+      <button class="btn btn-outline" onclick="refreshMemories()" id="refreshBtn">Refresh</button>
+    </div>
+    <div class="memory-list" id="memoryList">
+      <div class="empty-state">No memories loaded yet. Click Refresh.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API = window.location.origin;
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const memoryList = document.getElementById("memoryList");
+const healthDot = document.getElementById("healthDot");
+const healthLabel = document.getElementById("healthLabel");
+const sessionInput = document.getElementById("sessionId");
+
+function getSession() {
+  return sessionInput.value.trim() || "demo-session";
+}
+
+function addMsg(text, cls) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  chatMessages.appendChild(d);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+  addMsg(text, "user");
+  sendBtn.disabled = true;
+  try {
+    const res = await fetch(API + "/v1/memory/store", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: getSession(), content: text }),
+    });
+    const data = await res.json();
+    const results = data.results || [];
+    if (results.length > 0 && results[0].status === "stored") {
+      addMsg(`Stored on subnet (chunk ${results[0].id.slice(0, 8)}…)`, "system");
+    } else if (results.length > 0) {
+      addMsg(`Miner returned ${results.length} result(s).`, "system");
+    } else {
+      addMsg("Sent to miners. (No results returned — miners may still be syncing.)", "system");
+    }
+  } catch (e) {
+    addMsg("Error: " + e.message, "system");
+  }
+  sendBtn.disabled = false;
+}
+
+async function refreshMemories() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "Loading...";
+  try {
+    const res = await fetch(API + "/v1/memory/query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: getSession(), query: "*", top_k: 50 }),
+    });
+    const data = await res.json();
+    const results = data.results || [];
+    if (results.length === 0) {
+      memoryList.innerHTML = '<div class="empty-state">No memories found for this session.</div>';
+    } else {
+      memoryList.innerHTML = "";
+      results.forEach((r, i) => {
+        const item = document.createElement("div");
+        item.className = "memory-item";
+        const content = r.content || r.text || r.query || JSON.stringify(r);
+        const md = r.metadata || {};
+        const id = r.id || md.id;
+        const ts = r.timestamp || md.timestamp;
+        const meta = [];
+        if (id) meta.push(id.slice(0, 8) + "…");
+        if (ts) meta.push(ts);
+        if (md.tier) meta.push("tier: " + md.tier);
+        if (r.score !== undefined && r.score > 0) meta.push("score: " + Number(r.score).toFixed(3));
+        item.innerHTML =
+          '<div>' + escapeHtml(content) + '</div>' +
+          (meta.length ? '<div class="meta">' + escapeHtml(meta.join(" · ")) + '</div>' : '');
+        memoryList.appendChild(item);
+      });
+    }
+  } catch (e) {
+    memoryList.innerHTML = '<div class="empty-state">Error: ' + escapeHtml(e.message) + '</div>';
+  }
+  btn.disabled = false;
+  btn.textContent = "Refresh";
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function pollHealth() {
+  try {
+    const res = await fetch(API + "/v1/health");
+    const data = await res.json();
+    const ok = data.status === "ok" && data.subtensor && data.dendrite;
+    healthDot.className = "health-dot" + (ok ? " ok" : "");
+    healthLabel.textContent = ok
+      ? `n=${data.metagraph_n} · step ${data.validator_step}`
+      : data.status || "offline";
+  } catch {
+    healthDot.className = "health-dot";
+    healthLabel.textContent = "offline";
+  }
+}
+
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+pollHealth();
+setInterval(pollHealth, 5000);
+</script>
+</body>
+</html>

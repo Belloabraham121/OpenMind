@@ -5,18 +5,19 @@ Concrete implementation of a Bittensor validator that queries miners using the
 `OpenMindRequest` synapse and scores them using `openmind.scoring`.
 """
 
-from __future__ import annotations
-
 import asyncio
+import threading
 import time
 from typing import Any, Dict, List, Mapping, Tuple
 
 import bittensor as bt
+import uvicorn
 
 from openmind.protocol import OpenMindRequest
 from openmind.checkpoint import save_checkpoint
 from openmind.scoring import get_rewards
 from openmind.utils.uids import get_random_uids
+from gateway.api import app as gateway_app, configure as configure_gateway
 
 
 class Validator:
@@ -31,47 +32,66 @@ class Validator:
         """
         self.config = config or bt.Config()
 
-        # Core Bittensor components (using SDK v10 classes).
-        self.wallet = bt.Wallet(config=self.config)
+        # Local dev defaults.
+        self.netuid = getattr(self.config, "netuid", None) or 2
+        self.chain_endpoint = "ws://127.0.0.1:9944"
+        self.wallet_name = "test-coldkey"
+        self.wallet_hotkey = "validator-hotkey"
+        self.wallet_path = "~/Documents/bittensor-test-wallet"
+        self.sample_size = 4
+
+        # Standard Bittensor components — pass params directly to constructors.
+        self.wallet = bt.Wallet(
+            name=self.wallet_name,
+            hotkey=self.wallet_hotkey,
+            path=self.wallet_path,
+        )
 
         try:
-            self.subtensor = bt.Subtensor(config=self.config)
-        except Exception as e:  # pragma: no cover - environment dependent
+            self.subtensor = bt.Subtensor(network=self.chain_endpoint)
+        except Exception as e:
             bt.logging.error(f"Failed to create Subtensor for validator: {e}")
             self.subtensor = None
 
         if self.subtensor is not None:
             try:
-                self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            except Exception as e:  # pragma: no cover - environment dependent
+                self.metagraph = self.subtensor.metagraph(netuid=self.netuid)
+            except Exception as e:
                 bt.logging.error(f"Failed to sync metagraph for validator: {e}")
                 self.metagraph = None
         else:
             self.metagraph = None
 
-        # Dendrite client for querying miners.
         try:
             self.dendrite = bt.Dendrite(wallet=self.wallet)
-        except Exception as e:  # pragma: no cover - environment dependent
+        except Exception as e:
             bt.logging.error(f"Failed to create Dendrite for validator: {e}")
             self.dendrite = None
 
-        # Internal validation state.
         self.step: int = 0
 
-        # Per-miner EMA scores.
         self.scores = (
             [0.0 for _ in range(len(self.metagraph.uids))]
             if self.metagraph is not None
             else []
         )
 
-        # Ground-truth state for challenges.
         self._retrieval_probes: Dict[str, List[str]] = {}
         self._storage_challenges: Dict[str, str] = {}
         self._version_challenges: Dict[str, Dict[str, Any]] = {}
-        # Pool of real chunk IDs observed in miner responses.
         self._known_chunk_ids: List[str] = []
+
+        bt.logging.info(
+            f"OpenMind validator initialised "
+            f"(netuid={self.netuid}, "
+            f"endpoint={self.chain_endpoint})"
+        )
+        if self.subtensor is None:
+            bt.logging.warning("Validator running without Subtensor client (offline mode).")
+        if self.metagraph is None:
+            bt.logging.warning("Validator metagraph not available; EMA scores will not update.")
+        if self.dendrite is None:
+            bt.logging.warning("Validator Dendrite not available; cannot query miners.")
 
     def _current_challenge_id(self) -> str:
         return f"step-{int(self.step)}"
@@ -200,7 +220,11 @@ class Validator:
 
         # Sample which miners to query.
         miner_uids: List[int] = get_random_uids(
-            self, k=self.config.neuron.sample_size
+            self, k=self.sample_size
+        )
+
+        bt.logging.info(
+            f"Validator step={self.step} mode={mode} querying {len(miner_uids)} miners."
         )
 
         # Build a simple request for this step.
@@ -258,7 +282,7 @@ class Validator:
             workflow_id=f"wf-{self.wallet.hotkey.ss58_address}",
             step=int(self.step),
             state={
-                "variables": {"sample_size": self.config.neuron.sample_size},
+                "variables": {"sample_size": self.sample_size},
                 "tool_results": responses,
                 "decisions": [f"queried_{len(miner_uids)}_miners"],
             },
@@ -272,26 +296,50 @@ class Validator:
 
         bt.logging.info(f"Updated EMA scores (sample): {self.scores[:5]}")
 
+    def _start_gateway(self, host: str = "0.0.0.0", port: int = 8090) -> None:
+        """Launch the REST gateway in a daemon thread."""
+        configure_gateway(self)
+        config = uvicorn.Config(gateway_app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        thread = threading.Thread(target=server.run, daemon=True)
+        thread.start()
+        print(f"[GATEWAY] REST API listening on {host}:{port}")
+
     def run(self) -> None:
         """
-        Main loop: repeatedly run forward passes and update scores.
+        Main loop: start the REST gateway, then repeatedly run forward passes.
         """
-        bt.logging.info("OpenMind validator starting.")
+        self._start_gateway()
+
+        print("[VALIDATOR] Running main loop (Ctrl+C to stop)...")
         loop = asyncio.get_event_loop()
 
         try:
             while True:
-                bt.logging.info(f"Validator step {self.step}")
+                print(f"[VALIDATOR] step={self.step}")
                 loop.run_until_complete(self.forward())
                 self.step += 1
+                time.sleep(12)
         except KeyboardInterrupt:
-            bt.logging.info("OpenMind validator shutting down.")
+            print("\n[VALIDATOR] Shutting down...")
 
 
 def run() -> None:
     """
     Main entrypoint used by `python neuron.py --role validator`.
     """
+    bt.logging.set_debug()
+
     validator = Validator()
+
+    status_parts = []
+    status_parts.append(f"subtensor={'OK' if validator.subtensor else 'OFFLINE'}")
+    status_parts.append(f"metagraph={'OK (n=' + str(validator.metagraph.n) + ')' if validator.metagraph else 'UNAVAILABLE'}")
+    status_parts.append(f"dendrite={'OK' if validator.dendrite else 'UNAVAILABLE'}")
+    print(f"[VALIDATOR] Init status: {', '.join(status_parts)}")
+
     validator.run()
 
+
+if __name__ == "__main__":
+    run()
