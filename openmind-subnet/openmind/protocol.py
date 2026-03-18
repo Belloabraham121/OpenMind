@@ -32,6 +32,9 @@ class OpenMindRequest(bt.Synapse):
     filters: Dict[str, Any] = {}
     tier: str = "basic"  # e.g. "basic" | "premium"
 
+    # ---- Temporal grounding ----
+    event_at: Optional[str] = None  # ISO 8601 — when the described event occurred
+
     # ---- Time-travel / versioning ----
     as_of_timestamp: Optional[str] = None  # ISO 8601
     version_id: Optional[str] = None

@@ -59,13 +59,21 @@ We will check items off as we complete them.
 
 ## 9. Neuron Wiring
 
-- [ ] Implement `run()` in `neurons/miner.py` using Bittensor base neuron patterns
-- [ ] Implement `run()` in `neurons/validator.py`
-- [ ] Ensure `python neuron.py --role miner|validator` works end-to-end (smoke test)
+- [x] Implement `run()` in `neurons/miner.py` using Bittensor base neuron patterns
+- [x] Implement `run()` in `neurons/validator.py`
+- [x] Ensure `python neuron.py --role miner|validator` works end-to-end (smoke test)
 
 ## 10. Observability & Tooling
 
-- [ ] Implement config loading in `utils/config.py`
-- [ ] Implement logging setup in `utils/logging.py`
-- [ ] Add basic structured logs for miner/validator flows
-- [ ] Add initial unit tests under `tests/` and set up a simple test runner
+- [x] Implement config loading in `utils/config.py`
+- [x] Implement logging setup in `utils/logging.py`
+- [x] Add structured logs for miner/validator flows
+- [x] Add initial unit tests under `tests/` and set up a simple test runner
+
+## 11. Incentive Mechanism & Rewards
+
+- [x] Design OpenMind-specific incentive mechanism based on PRD §2 (benchmark-beating reward model)
+- [x] Implement OpenMind reward computation in `openmind/scoring.py` (storage, retrieval, versioning, checkpoints, latency)
+- [x] Implement validator challenge modes in `neurons/validator.py` (real + synthetic MCP-style queries)
+- [x] Wire rewards into EMA scores and on-chain weights
+- [x] Add tests that validate reward behavior for different miner performance profiles

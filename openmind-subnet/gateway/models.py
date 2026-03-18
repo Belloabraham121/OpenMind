@@ -19,6 +19,7 @@ class StoreRequest(BaseModel):
     content: str
     role: str = "user"
     tier: str = "basic"
+    event_at: Optional[str] = None
     multimodal_type: Optional[str] = None
     embedding: Optional[List[float]] = None
     filters: Dict[str, Any] = Field(default_factory=dict)
@@ -32,9 +33,14 @@ class QueryRequest(BaseModel):
     query: Optional[str] = None
     embedding: Optional[List[float]] = None
     top_k: int = 10
+    smart: bool = True
     filters: Dict[str, Any] = Field(default_factory=dict)
     tier: str = "basic"
     multimodal_type: Optional[str] = None
+
+
+class CompactRequest(BaseModel):
+    session_id: str
 
 
 class VersionRequest(BaseModel):
@@ -70,9 +76,13 @@ class SharedSpaceQueryRequest(BaseModel):
 
 class MemoryResult(BaseModel):
     results: List[Dict[str, Any]] = Field(default_factory=list)
+    anchor: Optional[Dict[str, Any]] = None
+    facts: Optional[List[Dict[str, Any]]] = None
+    sources: Optional[List[Dict[str, Any]]] = None
     version_diff: Optional[Dict[str, Any]] = None
     provenance_path: Optional[List[str]] = None
     checkpoint: Optional[Dict[str, Any]] = None
+    token_estimate: Optional[int] = None
 
 
 class HealthResponse(BaseModel):

@@ -18,6 +18,8 @@
     --green: #34d399;
     --red: #f87171;
     --blue: #60a5fa;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
     --radius: 8px;
   }
 
@@ -54,10 +56,13 @@
     padding: 6px 12px; border-radius: var(--radius); font-size: 13px; width: 220px;
   }
   .session-input:focus { outline: none; border-color: var(--accent-dim); }
+  .token-badge {
+    background: #7c3aed22; color: var(--accent); font-size: 11px; padding: 3px 8px;
+    border-radius: 4px; font-weight: 600;
+  }
 
   main { display: flex; flex: 1; min-height: 0; }
 
-  /* ---- Chat panel ---- */
   .chat-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
   .chat-messages {
     flex: 1; overflow-y: auto; padding: 16px 20px;
@@ -103,24 +108,49 @@
   .btn:disabled { opacity: 0.4; cursor: default; }
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
   .btn-outline:hover { background: var(--surface); border-color: var(--accent-dim); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
 
-  /* ---- Memory panel ---- */
-  .memory-panel { width: 420px; display: flex; flex-direction: column; flex-shrink: 0; }
+  .memory-panel { width: 460px; display: flex; flex-direction: column; flex-shrink: 0; }
   .memory-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface);
+    gap: 8px; flex-wrap: wrap;
   }
   .memory-header h2 { font-size: 14px; font-weight: 600; }
+  .view-toggle {
+    display: flex; gap: 4px;
+  }
+  .view-toggle button {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+  }
+  .view-toggle button.active {
+    background: var(--accent-dim); color: #fff; border-color: var(--accent-dim);
+  }
   .memory-list {
     flex: 1; overflow-y: auto; padding: 12px 16px;
     display: flex; flex-direction: column; gap: 8px;
   }
+
+  .anchor-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #2563eb44;
+    border-radius: var(--radius); padding: 12px 14px; font-size: 12px; line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .anchor-card h3 { font-size: 12px; color: var(--cyan); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .anchor-card .anchor-intent { color: var(--text); margin-bottom: 4px; }
+  .anchor-card .anchor-facts { color: var(--muted); }
+  .anchor-card .anchor-facts li { margin-left: 12px; margin-top: 2px; }
+
   .memory-item {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 10px 12px; font-size: 13px; line-height: 1.5;
   }
   .memory-item.role-user { border-left: 3px solid var(--accent-dim); }
   .memory-item.role-assistant { border-left: 3px solid var(--blue); }
+  .memory-item.type-fact { border-left: 3px solid var(--green); }
+  .memory-item.type-anchor { border-left: 3px solid var(--cyan); }
   .memory-item .role-tag {
     display: inline-block; font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.05em;
@@ -129,6 +159,24 @@
   .memory-item .role-tag.user { background: var(--accent-dim); color: #fff; }
   .memory-item .role-tag.assistant { background: #2563eb44; color: var(--blue); }
   .memory-item .role-tag.system { background: var(--border); color: var(--muted); }
+
+  .type-badge {
+    display: inline-block; font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 1px 6px; border-radius: 3px; margin-left: 4px;
+  }
+  .type-badge.episode { background: #27272a; color: var(--muted); }
+  .type-badge.fact { background: #065f4622; color: var(--green); }
+  .type-badge.anchor { background: #164e6322; color: var(--cyan); }
+
+  .rel-badge {
+    display: inline-block; font-size: 9px; padding: 1px 5px;
+    border-radius: 3px; margin-top: 4px; margin-right: 3px;
+  }
+  .rel-badge.supersedes { background: #f8717133; color: var(--red); }
+  .rel-badge.elaborates { background: #fb923c33; color: var(--orange); }
+  .rel-badge.correlates { background: #60a5fa33; color: var(--blue); }
+
   .memory-item .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
   .empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 40px 16px; }
 
@@ -144,6 +192,7 @@
 <header>
   <h1>OpenMind <span>Memory Console</span></h1>
   <div class="spacer"></div>
+  <span class="token-badge" id="tokenBadge" style="display:none">0 tokens</span>
   <label style="font-size:12px;color:var(--muted);">Session:</label>
   <input class="session-input" id="sessionId" value="demo-session" spellcheck="false">
   <div class="health-dot" id="healthDot" title="Gateway status"></div>
@@ -153,7 +202,7 @@
 <main>
   <section class="chat-panel">
     <div class="chat-messages" id="chatMessages">
-      <div class="msg system">Welcome to OpenMind. Type a message to store it on the decentralised memory subnet. Your messages and AI responses are both persisted.</div>
+      <div class="msg system">Welcome to OpenMind. Type a message to store it on the decentralised memory subnet. Facts are automatically extracted and relationships detected for token-efficient retrieval.</div>
     </div>
     <div class="chat-input-row">
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="Type a memory to store..."></textarea>
@@ -163,8 +212,13 @@
 
   <section class="memory-panel">
     <div class="memory-header">
-      <h2>Conversation History</h2>
-      <button class="btn btn-outline" onclick="refreshMemories()" id="refreshBtn">Refresh</button>
+      <h2>Memory Explorer</h2>
+      <div class="view-toggle">
+        <button class="active" id="viewFacts" onclick="setView('facts')">Facts</button>
+        <button id="viewFull" onclick="setView('full')">Full History</button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="compactSession()">Compact</button>
+      <button class="btn btn-outline btn-sm" onclick="refreshMemories()" id="refreshBtn">Refresh</button>
     </div>
     <div class="memory-list" id="memoryList">
       <div class="empty-state">No memories loaded yet. Click Refresh.</div>
@@ -181,9 +235,19 @@ const memoryList = document.getElementById("memoryList");
 const healthDot = document.getElementById("healthDot");
 const healthLabel = document.getElementById("healthLabel");
 const sessionInput = document.getElementById("sessionId");
+const tokenBadge = document.getElementById("tokenBadge");
+
+let currentView = "facts";
 
 function getSession() {
   return sessionInput.value.trim() || "demo-session";
+}
+
+function setView(v) {
+  currentView = v;
+  document.getElementById("viewFacts").className = v === "facts" ? "active" : "";
+  document.getElementById("viewFull").className = v === "full" ? "active" : "";
+  refreshMemories();
 }
 
 function addMsg(text, cls, label) {
@@ -223,8 +287,9 @@ async function sendMessage() {
     const stored = (storeResult.results || [])[0];
 
     if (stored && stored.status === "stored") {
-      const aiResponse = "Acknowledged. Your memory has been stored on the OpenMind subnet "
-        + "(chunk " + stored.id.slice(0, 8) + "…). I can recall this in future sessions.";
+      const fc = stored.fact_count || 0;
+      const aiResponse = "Stored on OpenMind (chunk " + stored.id.slice(0, 8)
+        + "…). Extracted " + fc + " fact(s). I can recall this in future sessions.";
       addMsg(aiResponse, "assistant", "Assistant");
       await storeOnSubnet(aiResponse, "assistant");
     } else {
@@ -236,52 +301,143 @@ async function sendMessage() {
   sendBtn.disabled = false;
 }
 
+async function compactSession() {
+  try {
+    const res = await fetch(API + "/v1/memory/compact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: getSession() }),
+    });
+    const data = await res.json();
+    addMsg("Session compacted: " + JSON.stringify((data.results||[])[0]?.status || "done"), "system");
+    refreshMemories();
+  } catch (e) {
+    addMsg("Compact error: " + e.message, "system");
+  }
+}
+
+function renderAnchor(anchor) {
+  if (!anchor) return "";
+  const md = anchor.metadata || anchor;
+  const intent = md.intent || "";
+  const kf = md.key_facts || [];
+  let html = '<div class="anchor-card">';
+  html += '<h3>Session Anchor</h3>';
+  if (intent) html += '<div class="anchor-intent">' + escapeHtml(intent) + '</div>';
+  if (kf.length) {
+    html += '<ul class="anchor-facts">';
+    kf.forEach(f => { html += '<li>' + escapeHtml(f) + '</li>'; });
+    html += '</ul>';
+  }
+  const fc = md.active_fact_count || md.fact_count || 0;
+  html += '<div style="margin-top:6px;font-size:10px;color:var(--muted);">' + fc + ' active facts · updated ' + (md.last_updated || '') + '</div>';
+  html += '</div>';
+  return html;
+}
+
+function renderRelationships(rels) {
+  if (!rels || !rels.length) return "";
+  return rels.map(r => {
+    const cls = r.relation || "correlates";
+    return '<span class="rel-badge ' + cls + '">' + cls + '</span>';
+  }).join("");
+}
+
+function renderMemoryItem(r) {
+  const md = r.metadata || {};
+  const role = r.role || md.role || "user";
+  const type = r.type || md.type || "episode";
+  const item = document.createElement("div");
+  item.className = "memory-item role-" + role + " type-" + type;
+
+  let header = '<span class="role-tag ' + role + '">' + role + '</span>';
+  header += '<span class="type-badge ' + type + '">' + type + '</span>';
+  item.innerHTML = header;
+
+  const content = document.createElement("div");
+  content.textContent = r.content || r.text || JSON.stringify(r);
+  content.style.marginTop = "4px";
+  item.appendChild(content);
+
+  const rels = r.relationships || [];
+  if (rels.length) {
+    const relDiv = document.createElement("div");
+    relDiv.innerHTML = renderRelationships(rels);
+    item.appendChild(relDiv);
+  }
+
+  const id = r.id || md.id;
+  const ts = r.timestamp || md.timestamp;
+  const metaParts = [];
+  if (id) metaParts.push(id.slice(0, 8) + "…");
+  if (ts) metaParts.push(ts);
+  if (md.tier) metaParts.push("tier: " + md.tier);
+  if (md.confidence) metaParts.push("conf: " + (md.confidence * 100).toFixed(0) + "%");
+  if (md.source_episode_id) metaParts.push("src: " + md.source_episode_id.slice(0, 8) + "…");
+  if (metaParts.length) {
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = metaParts.join(" · ");
+    item.appendChild(meta);
+  }
+
+  return item;
+}
+
 async function refreshMemories() {
   const btn = document.getElementById("refreshBtn");
   btn.disabled = true;
   btn.textContent = "Loading...";
+
+  const useSmart = currentView === "facts";
+
   try {
     const res = await fetch(API + "/v1/memory/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: getSession(), query: "*", top_k: 100 }),
+      body: JSON.stringify({
+        session_id: getSession(),
+        query: "*",
+        top_k: 100,
+        smart: useSmart,
+      }),
     });
     const data = await res.json();
-    const results = data.results || [];
-    if (results.length === 0) {
+
+    if (data.token_estimate) {
+      tokenBadge.textContent = data.token_estimate + " tokens";
+      tokenBadge.style.display = "inline-block";
+    }
+
+    memoryList.innerHTML = "";
+
+    if (useSmart && data.anchor) {
+      memoryList.innerHTML = renderAnchor(data.anchor);
+    }
+
+    let items = [];
+    if (useSmart && data.facts) {
+      items = data.facts || [];
+      if (data.sources && data.sources.length) {
+        const srcHeader = document.createElement("div");
+        srcHeader.style.cssText = "font-size:11px;color:var(--muted);margin-top:12px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;";
+        srcHeader.textContent = "Source Episodes (" + data.sources.length + ")";
+        memoryList.appendChild(srcHeader);
+        data.sources.forEach(s => memoryList.appendChild(renderMemoryItem(s)));
+
+        const factHeader = document.createElement("div");
+        factHeader.style.cssText = "font-size:11px;color:var(--muted);margin-top:12px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;";
+        factHeader.textContent = "Extracted Facts (" + items.length + ")";
+        memoryList.appendChild(factHeader);
+      }
+    } else {
+      items = data.results || [];
+    }
+
+    if (items.length === 0 && !data.anchor) {
       memoryList.innerHTML = '<div class="empty-state">No memories found for this session.</div>';
     } else {
-      memoryList.innerHTML = "";
-      results.forEach((r) => {
-        const item = document.createElement("div");
-        const role = r.role || (r.metadata || {}).role || "user";
-        item.className = "memory-item role-" + role;
-
-        const tag = document.createElement("span");
-        tag.className = "role-tag " + role;
-        tag.textContent = role;
-        item.appendChild(tag);
-
-        const content = document.createElement("div");
-        content.textContent = r.content || r.text || JSON.stringify(r);
-        item.appendChild(content);
-
-        const md = r.metadata || {};
-        const id = r.id || md.id;
-        const ts = r.timestamp || md.timestamp;
-        const metaParts = [];
-        if (id) metaParts.push(id.slice(0, 8) + "…");
-        if (ts) metaParts.push(ts);
-        if (md.tier) metaParts.push("tier: " + md.tier);
-        if (metaParts.length) {
-          const meta = document.createElement("div");
-          meta.className = "meta";
-          meta.textContent = metaParts.join(" · ");
-          item.appendChild(meta);
-        }
-
-        memoryList.appendChild(item);
-      });
+      items.forEach(r => memoryList.appendChild(renderMemoryItem(r)));
     }
   } catch (e) {
     memoryList.innerHTML = '<div class="empty-state">Error: ' + escapeHtml(e.message) + '</div>';

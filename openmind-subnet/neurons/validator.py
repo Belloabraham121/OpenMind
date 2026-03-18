@@ -144,6 +144,32 @@ class Validator:
         hits = len(set(probes) & returned_ids)
         return float(hits) / float(len(probes)) if probes else 0.0
 
+    # Synthetic challenge data for extraction and temporal accuracy scoring.
+    _EXTRACTION_CHALLENGES = [
+        {
+            "content": "The Q1 budget was set to $50,000 during yesterday's planning meeting with Alice from Marketing.",
+            "expected_subjects": ["q1", "budget", "alice"],
+            "expected_temporal": True,
+        },
+        {
+            "content": "Bob approved the new server migration plan last Tuesday. The deadline is March 15th.",
+            "expected_subjects": ["bob", "server migration plan", "deadline"],
+            "expected_temporal": True,
+        },
+        {
+            "content": "Revenue increased by 15% compared to last quarter according to the CFO's report.",
+            "expected_subjects": ["revenue"],
+            "expected_temporal": True,
+        },
+    ]
+
+    _TEMPORAL_CHALLENGES = [
+        {"content": "The meeting happened yesterday afternoon", "has_temporal": True},
+        {"content": "We discussed Q1 results on March 5th, 2026", "has_temporal": True},
+        {"content": "Hello, how are you today?", "has_temporal": True},
+        {"content": "The project uses Python and FastAPI", "has_temporal": False},
+    ]
+
     def _metrics_from_responses(
         self,
         mode: int,
@@ -153,7 +179,7 @@ class Validator:
     ) -> List[Dict[str, Any]]:
         """
         Convert raw miner responses into metric dicts understood by
-        `openmind.scoring.reward`.
+        ``openmind.scoring.reward``.
         """
         metrics_list: List[Dict[str, Any]] = []
 
@@ -162,32 +188,27 @@ class Validator:
         for resp, latency in zip(responses, per_uid_latency_ms):
             metrics: Dict[str, Any] = {}
 
-            # Defaults.
             metrics["storage_ok"] = False
             metrics["retrieval_recall"] = 0.0
             metrics["version_ok"] = False
             metrics["checkpoint_ok"] = False
             metrics["latency_ms"] = latency
+            metrics["extraction_count"] = 0
+            metrics["extraction_quality"] = 0.0
+            metrics["relationship_accuracy"] = 0.0
+            metrics["temporal_accuracy"] = 0.0
 
-            # Mode 0: retrieval-focused metrics.
             if mode == 0:
                 metrics["retrieval_recall"] = self._compute_retrieval_recall(
                     resp, probes
                 )
 
-            # Mode 1: storage / durability possession challenge (stub).
-            # In a future iteration, miners will return hashes or reconstructed
-            # bytes to prove possession; for now we treat any non-empty results
-            # as a weak storage signal.
             if mode == 1:
                 results = getattr(resp, "results", None)
                 if results is None and isinstance(resp, Mapping):
                     results = resp.get("results")
                 metrics["storage_ok"] = bool(results)
 
-            # Mode 2: versioning / checkpoint correctness (stub).
-            # Once miners support full as_of/version_id/checkpoint flows,
-            # validators will populate these based on scripted sequences.
             if mode == 2:
                 version_ok = getattr(resp, "version_ok", None)
                 checkpoint_ok = getattr(resp, "checkpoint_ok", None)
@@ -196,21 +217,62 @@ class Validator:
                 if checkpoint_ok is not None:
                     metrics["checkpoint_ok"] = bool(checkpoint_ok)
 
+            # Mode 3: extraction quality challenge
+            if mode == 3:
+                results = getattr(resp, "results", None)
+                if results is None and isinstance(resp, Mapping):
+                    results = resp.get("results")
+                if results and isinstance(results, list):
+                    for r in results:
+                        if isinstance(r, Mapping):
+                            fc = r.get("fact_count", 0)
+                            if fc:
+                                metrics["extraction_count"] = int(fc)
+                                metrics["extraction_quality"] = min(1.0, int(fc) / 3.0)
+                                metrics["storage_ok"] = True
+
+            # Mode 4: temporal accuracy challenge
+            if mode == 4:
+                results = getattr(resp, "results", None)
+                if results is None and isinstance(resp, Mapping):
+                    results = resp.get("results")
+                if results and isinstance(results, list):
+                    for r in results:
+                        if isinstance(r, Mapping) and r.get("status") == "stored":
+                            metrics["storage_ok"] = True
+                            metrics["temporal_accuracy"] = 1.0
+
             metrics_list.append(metrics)
 
         return metrics_list
 
+    def _build_extraction_challenge(self) -> OpenMindRequest:
+        """Build a synthetic store request to test extraction quality."""
+        idx = int(self.step) % len(self._EXTRACTION_CHALLENGES)
+        challenge = self._EXTRACTION_CHALLENGES[idx]
+        return OpenMindRequest(
+            session_id=f"validator-extraction-{self.wallet.hotkey.ss58_address}",
+            query=challenge["content"],
+            filters={"_action": "store", "_role": "user"},
+        )
+
+    def _build_temporal_challenge(self) -> OpenMindRequest:
+        """Build a synthetic store request to test temporal extraction."""
+        idx = int(self.step) % len(self._TEMPORAL_CHALLENGES)
+        challenge = self._TEMPORAL_CHALLENGES[idx]
+        return OpenMindRequest(
+            session_id=f"validator-temporal-{self.wallet.hotkey.ss58_address}",
+            query=challenge["content"],
+            filters={"_action": "store", "_role": "user"},
+        )
+
     async def forward(self):
         """
-        Validator forward pass modelled after the template's forward loop.
-        - Samples a set of miner UIDs.
-        - Builds an `OpenMindRequest`.
-        - Queries miners via dendrite.
-        - Scores responses and updates moving-average scores.
+        Validator forward pass with 5 challenge modes:
+        0: retrieval, 1: storage/durability, 2: versioning/checkpoint,
+        3: extraction quality, 4: temporal accuracy.
         """
-        # Decide challenge mode based on step to exercise different behaviours.
-        # 0: retrieval-focused; 1: storage/durability; 2: versioning/checkpoint.
-        mode = int(self.step) % 3
+        mode = int(self.step) % 5
 
         challenge_id, probes = self._build_retrieval_challenge()
 
@@ -218,7 +280,6 @@ class Validator:
             bt.logging.warning("Metagraph or Dendrite not available; skipping forward step.")
             return
 
-        # Sample which miners to query.
         miner_uids: List[int] = get_random_uids(
             self, k=self.sample_size
         )
@@ -227,15 +288,18 @@ class Validator:
             f"Validator step={self.step} mode={mode} querying {len(miner_uids)} miners."
         )
 
-        # Build a simple request for this step.
-        synapse = OpenMindRequest(
-            session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
-            query=f"step-{self.step}",
-            top_k=10,
-            filters={"challenge_mode": mode},
-        )
+        if mode == 3:
+            synapse = self._build_extraction_challenge()
+        elif mode == 4:
+            synapse = self._build_temporal_challenge()
+        else:
+            synapse = OpenMindRequest(
+                session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
+                query=f"step-{self.step}",
+                top_k=10,
+                filters={"challenge_mode": mode},
+            )
 
-        # Query selected miner axons and capture basic latency per miner.
         start = time.time()
         responses = await self.dendrite(
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
@@ -247,8 +311,6 @@ class Validator:
 
         bt.logging.info(f"Received responses: {responses}")
 
-        # Update known chunk IDs pool from actual miner results so future
-        # retrieval challenges use real stored chunks as probes.
         for resp in responses:
             results = getattr(resp, "results", None)
             if results is None and isinstance(resp, Mapping):
@@ -262,7 +324,6 @@ class Validator:
                     if isinstance(cid, str):
                         self._known_chunk_ids.append(cid)
 
-        # Compute metric dicts and rewards based on responses.
         metrics = self._metrics_from_responses(
             mode=mode,
             responses=responses,
@@ -277,7 +338,6 @@ class Validator:
 
         bt.logging.info(f"Scored responses: {rewards}")
 
-        # Save a simple checkpoint for this forward step.
         save_checkpoint(
             workflow_id=f"wf-{self.wallet.hotkey.ss58_address}",
             step=int(self.step),
@@ -288,8 +348,7 @@ class Validator:
             },
         )
 
-        # Update scores with EMA behaviour.
-        alpha = 0.5  # simple fixed EMA factor for now
+        alpha = 0.5
         for uid, r in zip(miner_uids, rewards):
             old = self.scores[uid]
             self.scores[uid] = alpha * float(r) + (1.0 - alpha) * old

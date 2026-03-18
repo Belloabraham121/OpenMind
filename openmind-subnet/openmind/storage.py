@@ -121,5 +121,25 @@ def session_ids() -> List[str]:
         return []
     return [
         d.name for d in BASE_DIR.iterdir()
-        if d.is_dir() and any(d.glob("*.json"))
+        if d.is_dir() and d.name != "_graph" and any(d.glob("*.json"))
     ]
+
+
+def update_chunk_metadata(
+    session_id: str,
+    chunk_id: str,
+    updates: Dict[str, Any],
+) -> bool:
+    """Patch metadata fields on an existing chunk. Returns True on success."""
+    path = _session_dir(session_id) / f"{chunk_id}.json"
+    if not path.exists():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        meta = data.get("metadata", {})
+        meta.update(updates)
+        data["metadata"] = meta
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return True
+    except (json.JSONDecodeError, OSError):
+        return False

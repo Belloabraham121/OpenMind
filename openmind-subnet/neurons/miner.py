@@ -14,6 +14,7 @@ import bittensor as bt
 
 from openmind.protocol import OpenMindRequest
 from openmind import retrieval, storage, durability, versioning, checkpoint, shared_space
+from openmind import extraction, graph
 
 
 class Miner:
@@ -126,26 +127,128 @@ class Miner:
             ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
             content = synapse.query or ""
             role = (synapse.filters or {}).get("_role", "user")
+            event_at = getattr(synapse, "event_at", None) or extraction.extract_temporal(content)
+
+            # 1. Store the episode (raw conversation turn)
             retrieval.add_chunk(
                 session_id=synapse.session_id,
                 content=content,
                 embedding=synapse.embedding or [],
                 metadata={
                     "id": chunk_id,
+                    "type": "episode",
                     "role": role,
                     "timestamp": ts,
+                    "recorded_at": ts,
+                    "event_at": event_at,
                     "tier": synapse.tier,
                     "multimodal_type": synapse.multimodal_type,
                 },
             )
-            bt.logging.info(f"Stored chunk {chunk_id} ({role}) for session {synapse.session_id}")
+
+            # 2. Extract facts from the episode
+            facts = extraction.extract_facts(
+                content=content,
+                episode_id=chunk_id,
+                session_id=synapse.session_id,
+                role=role,
+                recorded_at=ts,
+            )
+
+            # 3. Store each fact as its own chunk and detect relationships
+            existing_facts = retrieval.get_facts_for_session(synapse.session_id)
+            for fact in facts:
+                retrieval.add_chunk(
+                    session_id=synapse.session_id,
+                    content=fact["content"],
+                    embedding=synapse.embedding or [],
+                    metadata={
+                        "id": fact["id"],
+                        "type": "fact",
+                        "source_episode_id": fact["source_episode_id"],
+                        "subject": fact["subject"],
+                        "predicate": fact["predicate"],
+                        "object": fact["object"],
+                        "confidence": fact["confidence"],
+                        "recorded_at": fact["recorded_at"],
+                        "event_at": fact["event_at"],
+                        "valid_from": fact["valid_from"],
+                        "valid_until": fact["valid_until"],
+                        "is_latest": True,
+                        "role": fact["role"],
+                        "fact_keys": fact["fact_keys"],
+                        "timestamp": ts,
+                    },
+                )
+
+                edges = graph.detect_relationships(fact, existing_facts)
+                for edge in edges:
+                    if edge["relation"] == "supersedes":
+                        old_id = edge["target_id"]
+                        retrieval.update_fact_latest(synapse.session_id, old_id, False)
+                        storage.update_chunk_metadata(
+                            synapse.session_id, old_id,
+                            {"is_latest": False, "valid_until": ts},
+                        )
+
+                existing_facts.append(fact)
+
+            # 4. Auto-compact if threshold reached
+            all_session_facts = retrieval.get_facts_for_session(synapse.session_id)
+            anchor = extraction.generate_anchor(
+                synapse.session_id,
+                all_session_facts,
+                retrieval.get_anchor_for_session(synapse.session_id),
+            )
+            if anchor:
+                retrieval.add_chunk(
+                    session_id=synapse.session_id,
+                    content=anchor["content"],
+                    embedding=[],
+                    metadata=anchor,
+                )
+
+            bt.logging.info(
+                f"Stored episode {chunk_id} + {len(facts)} facts for session {synapse.session_id}"
+            )
             synapse.results = [{
                 "id": chunk_id,
                 "content": content,
                 "role": role,
                 "status": "stored",
                 "timestamp": ts,
+                "fact_count": len(facts),
             }]
+
+        elif action == "query_smart":
+            clean_filters = {
+                k: v for k, v in (synapse.filters or {}).items()
+                if not k.startswith("_")
+            }
+            synapse.results = retrieval.retrieve_smart(
+                session_id=synapse.session_id,
+                query=synapse.query,
+                embedding=synapse.embedding,
+                top_k=synapse.top_k,
+                filters=clean_filters,
+                time_point=synapse.as_of_timestamp,
+            )
+
+        elif action == "compact":
+            all_facts = retrieval.get_facts_for_session(synapse.session_id)
+            existing_anchor = retrieval.get_anchor_for_session(synapse.session_id)
+            anchor = extraction.generate_anchor(synapse.session_id, all_facts, existing_anchor)
+            if anchor:
+                retrieval.add_chunk(
+                    session_id=synapse.session_id,
+                    content=anchor["content"],
+                    embedding=[],
+                    metadata=anchor,
+                )
+                synapse.results = [{"status": "compacted", "anchor": anchor}]
+            else:
+                synapse.results = [{"status": "no_compaction_needed"}]
+
         else:
             clean_filters = {
                 k: v for k, v in (synapse.filters or {}).items()
@@ -179,7 +282,8 @@ class Miner:
         """
         Basic blacklist policy.
 
-        For local development any hotkey registered in the metagraph is allowed.
+        For local development we allow all requests since the metagraph
+        may not be fully synchronized between neurons on a local chain.
         In production, tighten this to require ``validator_permit``.
         """
         if self.metagraph is None:
@@ -188,18 +292,19 @@ class Miner:
 
         if synapse.dendrite is None or synapse.dendrite.hotkey is None:
             bt.logging.warning("Received a request without a dendrite or hotkey.")
-            return True, "Missing dendrite or hotkey"
+            return False, "Missing dendrite – allowing (local dev)"
 
-        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
+        if synapse.dendrite.hotkey in self.metagraph.hotkeys:
             bt.logging.trace(
-                f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}"
+                f"Allowing registered hotkey {synapse.dendrite.hotkey}"
             )
-            return True, "Unrecognized hotkey"
+            return False, "Hotkey recognized!"
 
-        bt.logging.trace(
-            f"Allowing registered hotkey {synapse.dendrite.hotkey}"
+        bt.logging.info(
+            f"Hotkey {synapse.dendrite.hotkey[:16]}… not in metagraph (n={self.metagraph.n}), "
+            f"allowing anyway (local dev)"
         )
-        return False, "Hotkey recognized!"
+        return False, "Allowing unrecognized hotkey (local dev)"
 
     async def priority(self, synapse: OpenMindRequest) -> float:
         """
@@ -214,7 +319,17 @@ class Miner:
             bt.logging.warning("Received a request without a dendrite or hotkey.")
             return 0.0
 
-        caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+        # In local dev the caller (gateway/validator) may not appear in the miner's
+        # metagraph view yet. If so, just return lowest priority instead of erroring
+        # (errors here abort the request before `forward()` runs).
+        try:
+            caller_uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+        except ValueError:
+            bt.logging.info(
+                f"Priority: hotkey {synapse.dendrite.hotkey[:16]}… not in metagraph "
+                f"(n={self.metagraph.n}); returning 0.0 (local dev)"
+            )
+            return 0.0
         priority = float(self.metagraph.S[caller_uid])
         bt.logging.trace(
             f"Prioritizing {synapse.dendrite.hotkey} with value: {priority}"

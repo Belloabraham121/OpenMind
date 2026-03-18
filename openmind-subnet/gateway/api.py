@@ -23,6 +23,7 @@ from openmind.utils.uids import get_random_uids
 from gateway.models import (
     CheckpointResumeRequest,
     CheckpointSaveRequest,
+    CompactRequest,
     HealthResponse,
     MemoryResult,
     QueryRequest,
@@ -30,6 +31,8 @@ from gateway.models import (
     StoreRequest,
     VersionRequest,
 )
+
+from openmind.extraction import extract_temporal
 
 
 app = FastAPI(title="OpenMind Gateway", version="0.1.0")
@@ -144,6 +147,26 @@ async def _query_miners(synapse: OpenMindRequest, k: int = 4) -> List[Any]:
     return responses
 
 
+def _expand_time_references(query: Optional[str]) -> tuple:
+    """Resolve relative time expressions in a query. Returns (expanded_query, resolved_date)."""
+    if not query:
+        return query, None
+    resolved = extract_temporal(query)
+    if resolved:
+        return f"{query} [resolved: {resolved}]", resolved
+    return query, None
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token."""
+    try:
+        import tiktoken
+        enc = tiktoken.get_encoding("cl100k_base")
+        return len(enc.encode(text))
+    except Exception:
+        return max(1, len(text) // 4)
+
+
 def _best_response(responses: List[Any]) -> MemoryResult:
     """Pick the response with the most results (simple heuristic)."""
     best: Optional[Any] = None
@@ -169,11 +192,12 @@ def _best_response(responses: List[Any]) -> MemoryResult:
 
 @app.post("/v1/memory/store", response_model=MemoryResult)
 async def memory_store(body: StoreRequest):
-    """Store a memory chunk on the subnet."""
+    """Store a memory chunk on the subnet with automatic fact extraction."""
     synapse = OpenMindRequest(
         session_id=body.session_id,
         query=body.content,
         embedding=body.embedding,
+        event_at=body.event_at,
         filters={**body.filters, "_action": "store", "_role": body.role},
         tier=body.tier,
         multimodal_type=body.multimodal_type,
@@ -187,15 +211,54 @@ async def memory_store(body: StoreRequest):
 
 @app.post("/v1/memory/query", response_model=MemoryResult)
 async def memory_query(body: QueryRequest):
-    """Search and retrieve memories from the subnet."""
+    """Search and retrieve memories. Uses two-phase smart retrieval by default."""
+    expanded_query, resolved_time = _expand_time_references(body.query)
+
+    action = "_action"
+    filters = dict(body.filters)
+    if body.smart:
+        filters[action] = "query_smart"
+    if resolved_time:
+        filters["_resolved_time"] = resolved_time
+
     synapse = OpenMindRequest(
         session_id=body.session_id,
-        query=body.query,
+        query=expanded_query,
         embedding=body.embedding,
         top_k=body.top_k,
-        filters=body.filters,
+        as_of_timestamp=resolved_time,
+        filters=filters,
         tier=body.tier,
         multimodal_type=body.multimodal_type,
+    )
+    responses = await _query_miners(synapse)
+    result = _best_response(responses)
+
+    if result.results and isinstance(result.results[0], dict):
+        smart_data = result.results[0]
+        if "facts" in smart_data:
+            result.anchor = smart_data.get("anchor")
+            result.facts = smart_data.get("facts")
+            result.sources = smart_data.get("sources")
+
+            all_text = ""
+            if result.anchor:
+                all_text += result.anchor.get("content", "") + " "
+            for f in (result.facts or []):
+                all_text += f.get("content", "") + " "
+            for s in (result.sources or []):
+                all_text += s.get("content", "") + " "
+            result.token_estimate = _estimate_tokens(all_text)
+
+    return result
+
+
+@app.post("/v1/memory/compact", response_model=MemoryResult)
+async def memory_compact(body: CompactRequest):
+    """Trigger session anchor compaction."""
+    synapse = OpenMindRequest(
+        session_id=body.session_id,
+        filters={"_action": "compact"},
     )
     responses = await _query_miners(synapse)
     return _best_response(responses)
