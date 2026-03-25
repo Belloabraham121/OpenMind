@@ -1,0 +1,3 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["chunks/Documents_openmind_frontend_edge-wrapper_ef5fd752.js",28307,(e,n,t)=>{self._ENTRIES||={};let h=Promise.resolve().then(()=>e.i(74703));h.catch(()=>{}),self._ENTRIES.middleware_middleware=new Proxy(h,{get(e,n){if("then"===n)return(n,t)=>e.then(n,t);let t=(...t)=>e.then(e=>(0,e[n])(...t));return t.then=(t,h)=>e.then(e=>e[n]).then(t,h),t}})}]);
+
+//# sourceMappingURL=Documents_openmind_frontend_edge-wrapper_ef5fd752.js.map
