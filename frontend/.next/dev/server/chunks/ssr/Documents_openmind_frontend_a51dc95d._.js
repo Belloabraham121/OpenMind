@@ -254,7 +254,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$fro
 var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$left$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowLeft$3e$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/lucide-react/dist/esm/icons/arrow-left.js [app-ssr] (ecmascript) <export default as ArrowLeft>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$right$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowRight$3e$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/lucide-react/dist/esm/icons/arrow-right.js [app-ssr] (ecmascript) <export default as ArrowRight>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$wallet$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Wallet$3e$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/lucide-react/dist/esm/icons/wallet.js [app-ssr] (ecmascript) <export default as Wallet>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/sonner/dist/index.mjs [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -269,39 +271,155 @@ function LoginForm() {
     const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRouter"])();
     const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useSearchParams"])();
     const from = searchParams.get("from") ?? "/dashboard";
+    const [identifier, setIdentifier] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
     const [email, setEmail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [phone, setPhone] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
     const [password, setPassword] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
-    const [error, setError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [userId, setUserId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [verificationCode, setVerificationCode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [verificationChannel, setVerificationChannel] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("email");
+    const [resetCode, setResetCode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [newPassword, setNewPassword] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [forgotIdentifier, setForgotIdentifier] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("");
+    const [showResetFlow, setShowResetFlow] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [devResetHint, setDevResetHint] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [devVerifyHint, setDevVerifyHint] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [resendCooldown, setResendCooldown] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(0);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [acceptedTerms, setAcceptedTerms] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
+        if (resendCooldown <= 0) return;
+        const id = setInterval(()=>setResendCooldown((v)=>v - 1), 1000);
+        return ()=>clearInterval(id);
+    }, [
+        resendCooldown
+    ]);
     async function submit(mode) {
-        setError(null);
         if (mode === "register" && !acceptedTerms) {
-            setError("Accept the terms to create an account (demo).");
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error("Accept the terms to create an account.");
             return;
         }
         setLoading(true);
         try {
-            const res = await fetch("/api/auth/login", {
+            const url = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+            const payload = mode === "register" ? {
+                email,
+                phone,
+                password
+            } : {
+                identifier,
+                password
+            };
+            const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    email,
-                    password
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json().catch(()=>({}));
             if (!res.ok) {
-                setError(data.error ?? "Could not sign in.");
+                __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error(data.error ?? "Authentication failed.");
                 return;
             }
+            if (mode === "register") {
+                setUserId(data.user?.id ?? "");
+                setVerificationChannel(data.user?.email ? "email" : "phone");
+                __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("Account created. Verify your email/phone to complete setup.");
+                return;
+            }
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("Signed in successfully.");
             router.push(from.startsWith("/") ? from : "/dashboard");
             router.refresh();
+        } catch  {
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error("Network error. Please try again.");
         } finally{
             setLoading(false);
         }
+    }
+    async function requestVerificationCode() {
+        if (!userId || resendCooldown > 0) return;
+        const res = await fetch("/api/auth/verify/request", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                userId,
+                channel: verificationChannel
+            })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error(data.error ?? "Could not send verification code.");
+            return;
+        }
+        setResendCooldown(30);
+        setDevVerifyHint(data.devCode ?? null);
+        __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success(`Verification code sent to your ${verificationChannel}.`);
+    }
+    async function confirmVerificationCode() {
+        if (!userId || !verificationCode) return;
+        const res = await fetch("/api/auth/verify/confirm", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                userId,
+                channel: verificationChannel,
+                code: verificationCode
+            })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error(data.error ?? "Verification failed.");
+            return;
+        }
+        __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("Verification successful. You can sign in now.");
+        setVerificationCode("");
+    }
+    async function startPasswordReset() {
+        const res = await fetch("/api/auth/password/forgot", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                identifier: forgotIdentifier
+            })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error(data.error ?? "Could not start password reset.");
+            return;
+        }
+        setShowResetFlow(true);
+        setDevResetHint(data.devCode ?? null);
+        __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("If this account exists, a reset code has been sent.");
+    }
+    async function finishPasswordReset() {
+        if (!userId || !resetCode || !newPassword) return;
+        const res = await fetch("/api/auth/password/reset", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                userId,
+                code: resetCode,
+                newPassword
+            })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].error(data.error ?? "Could not reset password.");
+            return;
+        }
+        __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["toast"].success("Password reset successful. Sign in with your new password.");
+        setResetCode("");
+        setNewPassword("");
+        setShowResetFlow(false);
     }
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "relative min-h-screen overflow-x-hidden noise-overlay",
@@ -320,7 +438,7 @@ function LoginForm() {
                             }
                         }, `h-${i}`, false, {
                             fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                            lineNumber: 53,
+                            lineNumber: 166,
                             columnNumber: 11
                         }, this)),
                     [
@@ -334,13 +452,13 @@ function LoginForm() {
                             }
                         }, `v-${i}`, false, {
                             fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                            lineNumber: 64,
+                            lineNumber: 177,
                             columnNumber: 11
                         }, this))
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                lineNumber: 51,
+                lineNumber: 164,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -354,14 +472,14 @@ function LoginForm() {
                                 className: "size-4"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 81,
+                                lineNumber: 194,
                                 columnNumber: 11
                             }, this),
                             "Back to OpenMind"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                        lineNumber: 77,
+                        lineNumber: 190,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -374,14 +492,14 @@ function LoginForm() {
                                         className: "h-px w-8 bg-foreground/30"
                                     }, void 0, false, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 87,
+                                        lineNumber: 200,
                                         columnNumber: 13
                                     }, this),
                                     "Authentication"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 86,
+                                lineNumber: 199,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -389,21 +507,21 @@ function LoginForm() {
                                 children: "Sign in to your memory workspace"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 90,
+                                lineNumber: 203,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 className: "mt-4 text-lg text-muted-foreground leading-relaxed",
-                                children: "Demo gate only — use any real email and an 8+ character password. Wallet-native login can ship alongside your subnet identity layer."
+                                children: "Use your email or phone number and password to access your OpenMind dashboard."
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 93,
+                                lineNumber: 206,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                        lineNumber: 85,
+                        lineNumber: 198,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -422,7 +540,7 @@ function LoginForm() {
                                                 children: "Sign in"
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 102,
+                                                lineNumber: 214,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TabsTrigger"], {
@@ -431,13 +549,13 @@ function LoginForm() {
                                                 children: "Create account"
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 108,
+                                                lineNumber: 220,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 101,
+                                        lineNumber: 213,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TabsContent"], {
@@ -448,30 +566,29 @@ function LoginForm() {
                                                 className: "space-y-2",
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
-                                                        htmlFor: "email",
-                                                        children: "Email"
+                                                        htmlFor: "identifier",
+                                                        children: "Email or phone"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 118,
+                                                        lineNumber: 230,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
-                                                        id: "email",
-                                                        type: "email",
-                                                        autoComplete: "email",
-                                                        placeholder: "you@company.com",
-                                                        value: email,
-                                                        onChange: (e)=>setEmail(e.target.value),
+                                                        id: "identifier",
+                                                        autoComplete: "username",
+                                                        placeholder: "you@company.com or +1234567890",
+                                                        value: identifier,
+                                                        onChange: (e)=>setIdentifier(e.target.value),
                                                         className: "h-11 rounded-lg border-foreground/15"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 119,
+                                                        lineNumber: 231,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 117,
+                                                lineNumber: 229,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -482,7 +599,7 @@ function LoginForm() {
                                                         children: "Password"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 130,
+                                                        lineNumber: 241,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -495,23 +612,14 @@ function LoginForm() {
                                                         className: "h-11 rounded-lg border-foreground/15"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 131,
+                                                        lineNumber: 242,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 129,
+                                                lineNumber: 240,
                                                 columnNumber: 15
-                                            }, this),
-                                            error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "text-sm text-destructive",
-                                                role: "alert",
-                                                children: error
-                                            }, void 0, false, {
-                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 142,
-                                                columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 type: "button",
@@ -524,19 +632,19 @@ function LoginForm() {
                                                         className: "size-4"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 153,
+                                                        lineNumber: 259,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 146,
+                                                lineNumber: 252,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 116,
+                                        lineNumber: 228,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$tabs$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["TabsContent"], {
@@ -551,7 +659,7 @@ function LoginForm() {
                                                         children: "Email"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 159,
+                                                        lineNumber: 265,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -564,13 +672,43 @@ function LoginForm() {
                                                         className: "h-11 rounded-lg border-foreground/15"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 160,
+                                                        lineNumber: 266,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 158,
+                                                lineNumber: 264,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "space-y-2",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Label"], {
+                                                        htmlFor: "phone-r",
+                                                        children: "Phone number"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 277,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                                        id: "phone-r",
+                                                        type: "tel",
+                                                        autoComplete: "tel",
+                                                        placeholder: "+1234567890",
+                                                        value: phone,
+                                                        onChange: (e)=>setPhone(e.target.value),
+                                                        className: "h-11 rounded-lg border-foreground/15"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 278,
+                                                        columnNumber: 17
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                lineNumber: 276,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -581,7 +719,7 @@ function LoginForm() {
                                                         children: "Password"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 171,
+                                                        lineNumber: 289,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
@@ -594,13 +732,13 @@ function LoginForm() {
                                                         className: "h-11 rounded-lg border-foreground/15"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 172,
+                                                        lineNumber: 290,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 170,
+                                                lineNumber: 288,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -613,7 +751,7 @@ function LoginForm() {
                                                         className: "mt-1"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 183,
+                                                        lineNumber: 301,
                                                         columnNumber: 17
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
@@ -622,23 +760,14 @@ function LoginForm() {
                                                         children: "I agree to the demo terms. Production will use your real policies and wallet signatures for shared spaces."
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 189,
+                                                        lineNumber: 307,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 182,
+                                                lineNumber: 300,
                                                 columnNumber: 15
-                                            }, this),
-                                            error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "text-sm text-destructive",
-                                                role: "alert",
-                                                children: error
-                                            }, void 0, false, {
-                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 195,
-                                                columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                                 type: "button",
@@ -651,25 +780,128 @@ function LoginForm() {
                                                         className: "size-4"
                                                     }, void 0, false, {
                                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                        lineNumber: 206,
+                                                        lineNumber: 319,
                                                         columnNumber: 17
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 199,
+                                                lineNumber: 312,
                                                 columnNumber: 15
+                                            }, this),
+                                            userId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "rounded-xl border border-foreground/10 p-4 space-y-3",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "text-sm text-muted-foreground",
+                                                        children: [
+                                                            "Verify your ",
+                                                            verificationChannel,
+                                                            " with a one-time code."
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 324,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "grid grid-cols-2 gap-2",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                                                type: "button",
+                                                                variant: verificationChannel === "email" ? "default" : "outline",
+                                                                className: "rounded-full",
+                                                                onClick: ()=>setVerificationChannel("email"),
+                                                                children: "Email"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                                lineNumber: 328,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                                                type: "button",
+                                                                variant: verificationChannel === "phone" ? "default" : "outline",
+                                                                className: "rounded-full",
+                                                                onClick: ()=>setVerificationChannel("phone"),
+                                                                children: "Phone"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                                lineNumber: 336,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 327,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "flex gap-2",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                                                placeholder: "Enter 6-digit code",
+                                                                value: verificationCode,
+                                                                onChange: (e)=>setVerificationCode(e.target.value)
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                                lineNumber: 346,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                                                type: "button",
+                                                                onClick: confirmVerificationCode,
+                                                                className: "rounded-full",
+                                                                children: "Verify"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                                lineNumber: 351,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 345,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                                        type: "button",
+                                                        variant: "outline",
+                                                        onClick: requestVerificationCode,
+                                                        disabled: resendCooldown > 0,
+                                                        className: "rounded-full",
+                                                        children: resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 355,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    devVerifyHint && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "font-mono text-xs text-muted-foreground",
+                                                        children: [
+                                                            "Dev code: ",
+                                                            devVerifyHint
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                        lineNumber: 365,
+                                                        columnNumber: 21
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                                lineNumber: 323,
+                                                columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 157,
+                                        lineNumber: 263,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 100,
+                                lineNumber: 212,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -684,12 +916,12 @@ function LoginForm() {
                                                     className: "w-full border-t border-border"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                    lineNumber: 214,
+                                                    lineNumber: 377,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 213,
+                                                lineNumber: 376,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -699,58 +931,144 @@ function LoginForm() {
                                                     children: "Or"
                                                 }, void 0, false, {
                                                     fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                    lineNumber: 217,
+                                                    lineNumber: 380,
                                                     columnNumber: 17
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 216,
+                                                lineNumber: 379,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 212,
+                                        lineNumber: 375,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
                                         type: "button",
                                         variant: "outline",
                                         className: "mt-2 h-12 w-full rounded-full border-foreground/20",
-                                        disabled: true,
+                                        onClick: ()=>setShowResetFlow((v)=>!v),
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$wallet$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Wallet$3e$__["Wallet"], {
                                                 className: "size-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 226,
+                                                lineNumber: 389,
                                                 columnNumber: 15
                                             }, this),
-                                            "Continue with wallet",
+                                            "Forgot password",
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 className: "ml-2 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground",
-                                                children: "Soon"
+                                                children: "Reset"
                                             }, void 0, false, {
                                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                                lineNumber: 228,
+                                                lineNumber: 391,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                        lineNumber: 220,
+                                        lineNumber: 383,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 211,
+                                lineNumber: 374,
                                 columnNumber: 11
+                            }, this),
+                            showResetFlow && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "mt-6 rounded-2xl border border-foreground/10 p-4 space-y-3",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-sm text-muted-foreground",
+                                        children: "Enter your email or phone, then use the reset code to set a new password."
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 399,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                        placeholder: "Email or phone",
+                                        value: forgotIdentifier,
+                                        onChange: (e)=>setForgotIdentifier(e.target.value)
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 402,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                        type: "button",
+                                        variant: "outline",
+                                        className: "rounded-full",
+                                        onClick: startPasswordReset,
+                                        children: "Send reset code"
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 407,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                        placeholder: "Your user id (from register response)",
+                                        value: userId,
+                                        onChange: (e)=>setUserId(e.target.value)
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 410,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                        placeholder: "Reset code",
+                                        value: resetCode,
+                                        onChange: (e)=>setResetCode(e.target.value)
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 415,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$input$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Input"], {
+                                        type: "password",
+                                        placeholder: "New password",
+                                        value: newPassword,
+                                        onChange: (e)=>setNewPassword(e.target.value)
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 420,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
+                                        type: "button",
+                                        className: "rounded-full",
+                                        onClick: finishPasswordReset,
+                                        children: "Complete reset"
+                                    }, void 0, false, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 426,
+                                        columnNumber: 15
+                                    }, this),
+                                    devResetHint && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "font-mono text-xs text-muted-foreground",
+                                        children: [
+                                            "Dev reset code: ",
+                                            devResetHint
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                        lineNumber: 430,
+                                        columnNumber: 17
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
+                                lineNumber: 398,
+                                columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                        lineNumber: 99,
+                        lineNumber: 211,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -764,25 +1082,25 @@ function LoginForm() {
                                 children: "Return home"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                                lineNumber: 237,
+                                lineNumber: 438,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                        lineNumber: 235,
+                        lineNumber: 436,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-                lineNumber: 76,
+                lineNumber: 189,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Documents/openmind/frontend/app/login/login-form.tsx",
-        lineNumber: 50,
+        lineNumber: 163,
         columnNumber: 5
     }, this);
 }

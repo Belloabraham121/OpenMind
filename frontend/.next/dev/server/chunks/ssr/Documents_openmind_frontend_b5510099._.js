@@ -778,6 +778,9 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$fro
 "use client";
 ;
 ;
+function fixedCoord(value) {
+    return value.toFixed(6);
+}
 const features = [
     {
         number: "01",
@@ -820,17 +823,17 @@ function DeployVisual() {
                         rx: "4"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 37,
+                        lineNumber: 41,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 36,
+                    lineNumber: 40,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 35,
+                lineNumber: 39,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -844,7 +847,7 @@ function DeployVisual() {
                 strokeWidth: "2"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 42,
+                lineNumber: 46,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
@@ -873,7 +876,7 @@ function DeployVisual() {
                                 repeatCount: "indefinite"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                lineNumber: 57,
+                                lineNumber: 61,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("animate", {
@@ -884,18 +887,18 @@ function DeployVisual() {
                                 repeatCount: "indefinite"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                lineNumber: 64,
+                                lineNumber: 68,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, i, true, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 47,
+                        lineNumber: 51,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 45,
+                lineNumber: 49,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -911,18 +914,18 @@ function DeployVisual() {
                     repeatCount: "indefinite"
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 77,
+                    lineNumber: 81,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 76,
+                lineNumber: 80,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 34,
+        lineNumber: 38,
         columnNumber: 5
     }, this);
 }
@@ -943,12 +946,12 @@ function AIVisual() {
                     repeatCount: "indefinite"
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 88,
+                    lineNumber: 92,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 87,
+                lineNumber: 91,
                 columnNumber: 7
             }, this),
             [
@@ -961,13 +964,15 @@ function AIVisual() {
             ].map((i)=>{
                 const angle = i * 60 * (Math.PI / 180);
                 const radius = 50;
+                const x = fixedCoord(100 + Math.cos(angle) * radius);
+                const y = fixedCoord(80 + Math.sin(angle) * radius);
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
                             x1: "100",
                             y1: "80",
-                            x2: 100 + Math.cos(angle) * radius,
-                            y2: 80 + Math.sin(angle) * radius,
+                            x2: x,
+                            y2: y,
                             stroke: "currentColor",
                             strokeWidth: "1",
                             opacity: "0.3",
@@ -979,17 +984,17 @@ function AIVisual() {
                                 repeatCount: "indefinite"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                lineNumber: 107,
+                                lineNumber: 113,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 98,
+                            lineNumber: 104,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
-                            cx: 100 + Math.cos(angle) * radius,
-                            cy: 80 + Math.sin(angle) * radius,
+                            cx: x,
+                            cy: y,
                             r: "6",
                             fill: "none",
                             stroke: "currentColor",
@@ -1002,18 +1007,18 @@ function AIVisual() {
                                 repeatCount: "indefinite"
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                lineNumber: 125,
+                                lineNumber: 131,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 117,
+                            lineNumber: 123,
                             columnNumber: 13
                         }, this)
                     ]
                 }, i, true, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 96,
+                    lineNumber: 102,
                     columnNumber: 11
                 }, this);
             }),
@@ -1033,7 +1038,7 @@ function AIVisual() {
                         repeatCount: "indefinite"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 139,
+                        lineNumber: 145,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("animate", {
@@ -1043,19 +1048,19 @@ function AIVisual() {
                         repeatCount: "indefinite"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 140,
+                        lineNumber: 146,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 138,
+                lineNumber: 144,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 85,
+        lineNumber: 89,
         columnNumber: 5
     }, this);
 }
@@ -1077,7 +1082,7 @@ function CollabVisual() {
                         strokeWidth: "2"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 151,
+                        lineNumber: 157,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("text", {
@@ -1090,7 +1095,7 @@ function CollabVisual() {
                         children: "A"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 152,
+                        lineNumber: 158,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -1102,13 +1107,13 @@ function CollabVisual() {
                         strokeWidth: "2"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 153,
+                        lineNumber: 159,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 150,
+                lineNumber: 156,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
@@ -1124,7 +1129,7 @@ function CollabVisual() {
                         strokeWidth: "2"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 158,
+                        lineNumber: 164,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("text", {
@@ -1137,7 +1142,7 @@ function CollabVisual() {
                         children: "B"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 159,
+                        lineNumber: 165,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -1149,13 +1154,13 @@ function CollabVisual() {
                         strokeWidth: "2"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 160,
+                        lineNumber: 166,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 157,
+                lineNumber: 163,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -1173,12 +1178,12 @@ function CollabVisual() {
                     repeatCount: "indefinite"
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 165,
+                    lineNumber: 171,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 164,
+                lineNumber: 170,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -1191,17 +1196,17 @@ function CollabVisual() {
                         href: "#dataPath"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 171,
+                        lineNumber: 177,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 170,
+                    lineNumber: 176,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 169,
+                lineNumber: 175,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -1210,7 +1215,7 @@ function CollabVisual() {
                 fill: "none"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 174,
+                lineNumber: 180,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("g", {
@@ -1228,7 +1233,7 @@ function CollabVisual() {
                             repeatCount: "indefinite"
                         }, void 0, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 179,
+                            lineNumber: 185,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("animate", {
@@ -1238,24 +1243,24 @@ function CollabVisual() {
                             repeatCount: "indefinite"
                         }, void 0, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 180,
+                            lineNumber: 186,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 178,
+                    lineNumber: 184,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 177,
+                lineNumber: 183,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 148,
+        lineNumber: 154,
         columnNumber: 5
     }, this);
 }
@@ -1271,7 +1276,7 @@ function SecurityVisual() {
                 strokeWidth: "2"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 191,
+                lineNumber: 197,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -1285,12 +1290,12 @@ function SecurityVisual() {
                     repeatCount: "indefinite"
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 204,
+                    lineNumber: 210,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 199,
+                lineNumber: 205,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -1302,7 +1307,7 @@ function SecurityVisual() {
                 fill: "currentColor"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 208,
+                lineNumber: 214,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("path", {
@@ -1313,7 +1318,7 @@ function SecurityVisual() {
                 strokeLinecap: "round"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 209,
+                lineNumber: 215,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("circle", {
@@ -1323,7 +1328,7 @@ function SecurityVisual() {
                 fill: "white"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 218,
+                lineNumber: 224,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("rect", {
@@ -1334,7 +1339,7 @@ function SecurityVisual() {
                 fill: "white"
             }, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 219,
+                lineNumber: 225,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("line", {
@@ -1353,7 +1358,7 @@ function SecurityVisual() {
                         repeatCount: "indefinite"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 223,
+                        lineNumber: 229,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("animate", {
@@ -1363,7 +1368,7 @@ function SecurityVisual() {
                         repeatCount: "indefinite"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 224,
+                        lineNumber: 230,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("animate", {
@@ -1373,19 +1378,19 @@ function SecurityVisual() {
                         repeatCount: "indefinite"
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 225,
+                        lineNumber: 231,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 222,
+                lineNumber: 228,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 189,
+        lineNumber: 195,
         columnNumber: 5
     }, this);
 }
@@ -1394,31 +1399,31 @@ function AnimatedVisual({ type }) {
         case "deploy":
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DeployVisual, {}, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 234,
+                lineNumber: 240,
                 columnNumber: 14
             }, this);
         case "ai":
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(AIVisual, {}, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 236,
+                lineNumber: 242,
                 columnNumber: 14
             }, this);
         case "collab":
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(CollabVisual, {}, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 238,
+                lineNumber: 244,
                 columnNumber: 14
             }, this);
         case "security":
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(SecurityVisual, {}, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 240,
+                lineNumber: 246,
                 columnNumber: 14
             }, this);
         default:
             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(DeployVisual, {}, void 0, false, {
                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                lineNumber: 242,
+                lineNumber: 248,
                 columnNumber: 14
             }, this);
     }
@@ -1451,12 +1456,12 @@ function FeatureCard({ feature, index }) {
                         children: feature.number
                     }, void 0, false, {
                         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                        lineNumber: 273,
+                        lineNumber: 279,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 272,
+                    lineNumber: 278,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1469,7 +1474,7 @@ function FeatureCard({ feature, index }) {
                                     children: feature.title
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 279,
+                                    lineNumber: 285,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1477,13 +1482,13 @@ function FeatureCard({ feature, index }) {
                                     children: feature.description
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 282,
+                                    lineNumber: 288,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 278,
+                            lineNumber: 284,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1494,34 +1499,34 @@ function FeatureCard({ feature, index }) {
                                     type: feature.visual
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 290,
+                                    lineNumber: 296,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                lineNumber: 289,
+                                lineNumber: 295,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 288,
+                            lineNumber: 294,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 277,
+                    lineNumber: 283,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-            lineNumber: 270,
+            lineNumber: 276,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 263,
+        lineNumber: 269,
         columnNumber: 5
     }, this);
 }
@@ -1554,14 +1559,14 @@ function FeaturesSection() {
                                     className: "w-8 h-px bg-foreground/30"
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 325,
+                                    lineNumber: 331,
                                     columnNumber: 13
                                 }, this),
                                 "Capabilities"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 324,
+                            lineNumber: 330,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1570,7 +1575,7 @@ function FeaturesSection() {
                                 "Core Features.",
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 340,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1578,19 +1583,19 @@ function FeaturesSection() {
                                     children: "Built for production AI."
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                                    lineNumber: 335,
+                                    lineNumber: 341,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 328,
+                            lineNumber: 334,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 323,
+                    lineNumber: 329,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1599,23 +1604,23 @@ function FeaturesSection() {
                             index: index
                         }, feature.number, false, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                            lineNumber: 342,
+                            lineNumber: 348,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-                    lineNumber: 340,
+                    lineNumber: 346,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-            lineNumber: 321,
+            lineNumber: 327,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/features-section.tsx",
-        lineNumber: 316,
+        lineNumber: 322,
         columnNumber: 5
     }, this);
 }
@@ -2430,11 +2435,17 @@ const metrics = [
     }
 ];
 function MetricsSection() {
-    const [time, setTime] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(new Date());
+    const [timeLabel, setTimeLabel] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])("--:--:--");
+    const [mounted, setMounted] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const [isVisible, setIsVisible] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(false);
     const sectionRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useRef"])(null);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
-        const interval = setInterval(()=>setTime(new Date()), 1000);
+        setMounted(true);
+        const formatNow = ()=>new Date().toLocaleTimeString("en-GB", {
+                hour12: false
+            });
+        setTimeLabel(formatNow());
+        const interval = setInterval(()=>setTimeLabel(formatNow()), 1000);
         return ()=>clearInterval(interval);
     }, []);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useEffect"])(()=>{
@@ -2465,14 +2476,14 @@ function MetricsSection() {
                                             className: "w-8 h-px bg-foreground/30"
                                         }, void 0, false, {
                                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                            lineNumber: 103,
+                                            lineNumber: 111,
                                             columnNumber: 13
                                         }, this),
                                         "Live Network Stats"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 102,
+                                    lineNumber: 110,
                                     columnNumber: 11
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -2481,20 +2492,20 @@ function MetricsSection() {
                                         "Real-time metrics",
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("br", {}, void 0, false, {
                                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                            lineNumber: 112,
+                                            lineNumber: 120,
                                             columnNumber: 15
                                         }, this),
                                         "you can trust."
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 106,
+                                    lineNumber: 114,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                            lineNumber: 101,
+                            lineNumber: 109,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2507,14 +2518,14 @@ function MetricsSection() {
                                             className: "w-2 h-2 rounded-full bg-green-500 animate-pulse"
                                         }, void 0, false, {
                                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                            lineNumber: 118,
+                                            lineNumber: 126,
                                             columnNumber: 15
                                         }, this),
                                         "Live"
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 117,
+                                    lineNumber: 125,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2522,26 +2533,27 @@ function MetricsSection() {
                                     children: "|"
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 121,
+                                    lineNumber: 129,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                    children: time.toLocaleTimeString()
+                                    suppressHydrationWarning: true,
+                                    children: mounted ? timeLabel : "--:--:--"
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 122,
+                                    lineNumber: 130,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                            lineNumber: 116,
+                            lineNumber: 124,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                    lineNumber: 100,
+                    lineNumber: 108,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2558,7 +2570,7 @@ function MetricsSection() {
                                     prefix: metric.prefix
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 136,
+                                    lineNumber: 144,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2566,29 +2578,29 @@ function MetricsSection() {
                                     children: metric.label
                                 }, void 0, false, {
                                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                                    lineNumber: 141,
+                                    lineNumber: 149,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, metric.label, true, {
                             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                            lineNumber: 129,
+                            lineNumber: 137,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-                    lineNumber: 127,
+                    lineNumber: 135,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-            lineNumber: 98,
+            lineNumber: 106,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/Documents/openmind/frontend/components/landing/metrics-section.tsx",
-        lineNumber: 97,
+        lineNumber: 105,
         columnNumber: 5
     }, this);
 }

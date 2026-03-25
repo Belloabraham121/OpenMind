@@ -16,9 +16,55 @@ module.exports = mod;
 
 __turbopack_context__.s([
     "AUTH_COOKIE_NAME",
-    ()=>AUTH_COOKIE_NAME
+    ()=>AUTH_COOKIE_NAME,
+    "clearSessionCookie",
+    ()=>clearSessionCookie,
+    "createSessionToken",
+    ()=>createSessionToken,
+    "hashToken",
+    ()=>hashToken,
+    "sessionExpiresAt",
+    ()=>sessionExpiresAt,
+    "setSessionCookie",
+    ()=>setSessionCookie
 ]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$esm$2f$api$2f$headers$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/next/dist/esm/api/headers.js [middleware-edge] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$request$2f$cookies$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/Documents/openmind/frontend/node_modules/next/dist/esm/server/request/cookies.js [middleware-edge] (ecmascript)");
+var __TURBOPACK__url__external__node$3a$crypto__ = __turbopack_context__.x("node:crypto", ()=>require("node:crypto"), true);
+;
+;
 const AUTH_COOKIE_NAME = "openmind_session";
+const SESSION_TTL_DAYS = Number(process.env.AUTH_SESSION_TTL_DAYS ?? "7");
+function createSessionToken() {
+    return __TURBOPACK__url__external__node$3a$crypto__["default"].randomBytes(48).toString("hex");
+}
+function hashToken(token) {
+    return __TURBOPACK__url__external__node$3a$crypto__["default"].createHash("sha256").update(token).digest("hex");
+}
+function sessionExpiresAt() {
+    const now = Date.now();
+    return new Date(now + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+}
+async function setSessionCookie(token) {
+    const cookieStore = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$request$2f$cookies$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["cookies"])();
+    cookieStore.set(AUTH_COOKIE_NAME, token, {
+        httpOnly: true,
+        path: "/",
+        maxAge: SESSION_TTL_DAYS * 24 * 60 * 60,
+        sameSite: "lax",
+        secure: ("TURBOPACK compile-time value", "development") === "production"
+    });
+}
+async function clearSessionCookie() {
+    const cookieStore = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$Documents$2f$openmind$2f$frontend$2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$request$2f$cookies$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["cookies"])();
+    cookieStore.set(AUTH_COOKIE_NAME, "", {
+        httpOnly: true,
+        path: "/",
+        maxAge: 0,
+        sameSite: "lax",
+        secure: ("TURBOPACK compile-time value", "development") === "production"
+    });
+}
 }),
 "[project]/Documents/openmind/frontend/middleware.ts [middleware-edge] (ecmascript)", ((__turbopack_context__) => {
 "use strict";

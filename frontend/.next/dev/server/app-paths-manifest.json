@@ -1,16 +1,8 @@
 {
   "/api/auth/login/route": "app/api/auth/login/route.js",
-  "/dashboard/api/page": "app/dashboard/api/page.js",
-  "/dashboard/billing/page": "app/dashboard/billing/page.js",
-  "/dashboard/durability/page": "app/dashboard/durability/page.js",
-  "/dashboard/explorer/page": "app/dashboard/explorer/page.js",
-  "/dashboard/multimodal/page": "app/dashboard/multimodal/page.js",
-  "/dashboard/network/page": "app/dashboard/network/page.js",
+  "/api/auth/register/route": "app/api/auth/register/route.js",
+  "/api/auth/verify/confirm/route": "app/api/auth/verify/confirm/route.js",
+  "/api/auth/verify/request/route": "app/api/auth/verify/request/route.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/provenance/page": "app/dashboard/provenance/page.js",
-  "/dashboard/settings/page": "app/dashboard/settings/page.js",
-  "/dashboard/shared/page": "app/dashboard/shared/page.js",
-  "/dashboard/workflows/page": "app/dashboard/workflows/page.js",
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js"
+  "/login/page": "app/login/page.js"
 }

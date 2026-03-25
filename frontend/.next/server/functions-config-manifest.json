@@ -1,4 +1,14 @@
 {
   "version": 1,
-  "functions": {}
+  "functions": {
+    "/api/auth/logout": {},
+    "/api/auth/password/forgot": {},
+    "/api/auth/refresh": {},
+    "/api/auth/login": {},
+    "/api/auth/password/reset": {},
+    "/api/auth/verify/confirm": {},
+    "/api/auth/verify/request": {},
+    "/api/auth/password/change": {},
+    "/api/auth/register": {}
+  }
 }

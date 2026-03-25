@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -9,41 +9,154 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, ArrowRight, Wallet } from "lucide-react"
+import { toast } from "sonner"
 
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams.get("from") ?? "/dashboard"
 
+  const [identifier, setIdentifier] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [verificationChannel, setVerificationChannel] = useState<"email" | "phone">(
+    "email",
+  )
+  const [resetCode, setResetCode] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [forgotIdentifier, setForgotIdentifier] = useState("")
+  const [showResetFlow, setShowResetFlow] = useState(false)
+  const [devResetHint, setDevResetHint] = useState<string | null>(null)
+  const [devVerifyHint, setDevVerifyHint] = useState<string | null>(null)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const id = setInterval(() => setResendCooldown((v) => v - 1), 1000)
+    return () => clearInterval(id)
+  }, [resendCooldown])
+
   async function submit(mode: "sign-in" | "register") {
-    setError(null)
     if (mode === "register" && !acceptedTerms) {
-      setError("Accept the terms to create an account (demo).")
+      toast.error("Accept the terms to create an account.")
       return
     }
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
+      const url = mode === "register" ? "/api/auth/register" : "/api/auth/login"
+      const payload =
+        mode === "register"
+          ? { email, phone, password }
+          : { identifier, password }
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       })
-      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        user?: { id: string; email?: string | null; phone?: string | null }
+      }
       if (!res.ok) {
-        setError(data.error ?? "Could not sign in.")
+        toast.error(data.error ?? "Authentication failed.")
         return
       }
+      if (mode === "register") {
+        setUserId(data.user?.id ?? "")
+        setVerificationChannel(data.user?.email ? "email" : "phone")
+        toast.success("Account created. Verify your email/phone to complete setup.")
+        return
+      }
+      toast.success("Signed in successfully.")
       router.push(from.startsWith("/") ? from : "/dashboard")
       router.refresh()
+    } catch {
+      toast.error("Network error. Please try again.")
     } finally {
       setLoading(false)
     }
+  }
+
+  async function requestVerificationCode() {
+    if (!userId || resendCooldown > 0) return
+    const res = await fetch("/api/auth/verify/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, channel: verificationChannel }),
+    })
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string
+      devCode?: string
+    }
+    if (!res.ok) {
+      toast.error(data.error ?? "Could not send verification code.")
+      return
+    }
+    setResendCooldown(30)
+    setDevVerifyHint(data.devCode ?? null)
+    toast.success(`Verification code sent to your ${verificationChannel}.`)
+  }
+
+  async function confirmVerificationCode() {
+    if (!userId || !verificationCode) return
+    const res = await fetch("/api/auth/verify/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        channel: verificationChannel,
+        code: verificationCode,
+      }),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      toast.error(data.error ?? "Verification failed.")
+      return
+    }
+    toast.success("Verification successful. You can sign in now.")
+    setVerificationCode("")
+  }
+
+  async function startPasswordReset() {
+    const res = await fetch("/api/auth/password/forgot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: forgotIdentifier }),
+    })
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string
+      devCode?: string
+    }
+    if (!res.ok) {
+      toast.error(data.error ?? "Could not start password reset.")
+      return
+    }
+    setShowResetFlow(true)
+    setDevResetHint(data.devCode ?? null)
+    toast.success("If this account exists, a reset code has been sent.")
+  }
+
+  async function finishPasswordReset() {
+    if (!userId || !resetCode || !newPassword) return
+    const res = await fetch("/api/auth/password/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, code: resetCode, newPassword }),
+    })
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      toast.error(data.error ?? "Could not reset password.")
+      return
+    }
+    toast.success("Password reset successful. Sign in with your new password.")
+    setResetCode("")
+    setNewPassword("")
+    setShowResetFlow(false)
   }
 
   return (
@@ -91,8 +204,7 @@ export function LoginForm() {
             Sign in to your memory workspace
           </h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            Demo gate only — use any real email and an 8+ character password. Wallet-native
-            login can ship alongside your subnet identity layer.
+            Use your email or phone number and password to access your OpenMind dashboard.
           </p>
         </div>
 
@@ -115,14 +227,13 @@ export function LoginForm() {
 
             <TabsContent value="sign-in" className="mt-0 flex flex-col gap-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="identifier">Email or phone</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="identifier"
+                  autoComplete="username"
+                  placeholder="you@company.com or +1234567890"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="h-11 rounded-lg border-foreground/15"
                 />
               </div>
@@ -138,11 +249,6 @@ export function LoginForm() {
                   className="h-11 rounded-lg border-foreground/15"
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
               <Button
                 type="button"
                 disabled={loading}
@@ -164,6 +270,18 @@ export function LoginForm() {
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 rounded-lg border-foreground/15"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone-r">Phone number</Label>
+                <Input
+                  id="phone-r"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+1234567890"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="h-11 rounded-lg border-foreground/15"
                 />
               </div>
@@ -191,11 +309,6 @@ export function LoginForm() {
                   signatures for shared spaces.
                 </label>
               </div>
-              {error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
               <Button
                 type="button"
                 disabled={loading}
@@ -205,6 +318,56 @@ export function LoginForm() {
                 Create account
                 <ArrowRight className="size-4" />
               </Button>
+
+              {userId && (
+                <div className="rounded-xl border border-foreground/10 p-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Verify your {verificationChannel} with a one-time code.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={verificationChannel === "email" ? "default" : "outline"}
+                      className="rounded-full"
+                      onClick={() => setVerificationChannel("email")}
+                    >
+                      Email
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={verificationChannel === "phone" ? "default" : "outline"}
+                      className="rounded-full"
+                      onClick={() => setVerificationChannel("phone")}
+                    >
+                      Phone
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter 6-digit code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                    />
+                    <Button type="button" onClick={confirmVerificationCode} className="rounded-full">
+                      Verify
+                    </Button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestVerificationCode}
+                    disabled={resendCooldown > 0}
+                    className="rounded-full"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                  </Button>
+                  {devVerifyHint && (
+                    <p className="font-mono text-xs text-muted-foreground">
+                      Dev code: {devVerifyHint}
+                    </p>
+                  )}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
 
@@ -221,15 +384,53 @@ export function LoginForm() {
               type="button"
               variant="outline"
               className="mt-2 h-12 w-full rounded-full border-foreground/20"
-              disabled
+              onClick={() => setShowResetFlow((v) => !v)}
             >
               <Wallet className="size-4" />
-              Continue with wallet
+              Forgot password
               <span className="ml-2 rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                Soon
+                Reset
               </span>
             </Button>
           </div>
+
+          {showResetFlow && (
+            <div className="mt-6 rounded-2xl border border-foreground/10 p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Enter your email or phone, then use the reset code to set a new password.
+              </p>
+              <Input
+                placeholder="Email or phone"
+                value={forgotIdentifier}
+                onChange={(e) => setForgotIdentifier(e.target.value)}
+              />
+              <Button type="button" variant="outline" className="rounded-full" onClick={startPasswordReset}>
+                Send reset code
+              </Button>
+              <Input
+                placeholder="Your user id (from register response)"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+              />
+              <Input
+                placeholder="Reset code"
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="New password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <Button type="button" className="rounded-full" onClick={finishPasswordReset}>
+                Complete reset
+              </Button>
+              {devResetHint && (
+                <p className="font-mono text-xs text-muted-foreground">Dev reset code: {devResetHint}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">

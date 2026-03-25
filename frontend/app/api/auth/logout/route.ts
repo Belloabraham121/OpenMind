@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server"
-import { AUTH_COOKIE_NAME } from "@/lib/auth-session"
+import { cookies } from "next/headers"
+import { authCollections } from "@/lib/auth-db"
+import { AUTH_COOKIE_NAME } from "@/lib/auth-constants"
+import { clearSessionCookie, hashToken } from "@/lib/auth-session"
+
+export const runtime = "nodejs"
 
 export async function POST() {
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set(AUTH_COOKIE_NAME, "", {
-    httpOnly: true,
-    path: "/",
-    maxAge: 0,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  })
-  return res
+  const cookieStore = await cookies()
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value
+  if (token) {
+    const { sessions } = await authCollections()
+    await sessions.deleteOne({ tokenHash: hashToken(token) })
+  }
+  await clearSessionCookie()
+  return NextResponse.json({ ok: true })
 }

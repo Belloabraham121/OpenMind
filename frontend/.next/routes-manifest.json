@@ -52,6 +52,48 @@
       "namedRegex": "^/api/auth/logout(?:/)?$"
     },
     {
+      "page": "/api/auth/password/change",
+      "regex": "^/api/auth/password/change(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/password/change(?:/)?$"
+    },
+    {
+      "page": "/api/auth/password/forgot",
+      "regex": "^/api/auth/password/forgot(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/password/forgot(?:/)?$"
+    },
+    {
+      "page": "/api/auth/password/reset",
+      "regex": "^/api/auth/password/reset(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/password/reset(?:/)?$"
+    },
+    {
+      "page": "/api/auth/refresh",
+      "regex": "^/api/auth/refresh(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/refresh(?:/)?$"
+    },
+    {
+      "page": "/api/auth/register",
+      "regex": "^/api/auth/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/register(?:/)?$"
+    },
+    {
+      "page": "/api/auth/verify/confirm",
+      "regex": "^/api/auth/verify/confirm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/verify/confirm(?:/)?$"
+    },
+    {
+      "page": "/api/auth/verify/request",
+      "regex": "^/api/auth/verify/request(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/verify/request(?:/)?$"
+    },
+    {
       "page": "/dashboard",
       "regex": "^/dashboard(?:/)?$",
       "routeKeys": {},
