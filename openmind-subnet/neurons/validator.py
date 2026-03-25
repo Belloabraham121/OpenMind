@@ -6,6 +6,8 @@ Concrete implementation of a Bittensor validator that queries miners using the
 """
 
 import asyncio
+import copy
+import os
 import threading
 import time
 from typing import Any, Dict, List, Mapping, Tuple
@@ -39,6 +41,8 @@ class Validator:
         self.wallet_hotkey = "validator-hotkey"
         self.wallet_path = "~/Documents/bittensor-test-wallet"
         self.sample_size = 4
+        self.local_miner_host = os.environ.get("OPENMIND_MINER_HOST", "127.0.0.1")
+        self.local_miner_port = int(os.environ.get("OPENMIND_MINER_PORT", "8091"))
 
         # Standard Bittensor components — pass params directly to constructors.
         self.wallet = bt.Wallet(
@@ -92,6 +96,21 @@ class Validator:
             bt.logging.warning("Validator metagraph not available; EMA scores will not update.")
         if self.dendrite is None:
             bt.logging.warning("Validator Dendrite not available; cannot query miners.")
+
+    def _patch_axons(self, axons: List[Any]) -> List[Any]:
+        """
+        Replace axons with port 0 (common on localnet) with the known local miner.
+        """
+        patched: List[Any] = []
+        for ax in axons:
+            if getattr(ax, "port", 0) == 0:
+                p = copy.deepcopy(ax)
+                p.ip = self.local_miner_host
+                p.port = self.local_miner_port
+                patched.append(p)
+            else:
+                patched.append(ax)
+        return patched
 
     def _current_challenge_id(self) -> str:
         return f"step-{int(self.step)}"
@@ -301,8 +320,9 @@ class Validator:
             )
 
         start = time.time()
+        axons = self._patch_axons([self.metagraph.axons[uid] for uid in miner_uids])
         responses = await self.dendrite(
-            axons=[self.metagraph.axons[uid] for uid in miner_uids],
+            axons=axons,
             synapse=synapse,
             deserialize=True,
         )

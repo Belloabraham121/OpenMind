@@ -1,0 +1,146 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api/auth/login",
+      "regex": "^/api/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/login(?:/)?$"
+    },
+    {
+      "page": "/api/auth/logout",
+      "regex": "^/api/auth/logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/logout(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/dashboard/api",
+      "regex": "^/dashboard/api(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/api(?:/)?$"
+    },
+    {
+      "page": "/dashboard/billing",
+      "regex": "^/dashboard/billing(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/billing(?:/)?$"
+    },
+    {
+      "page": "/dashboard/durability",
+      "regex": "^/dashboard/durability(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/durability(?:/)?$"
+    },
+    {
+      "page": "/dashboard/explorer",
+      "regex": "^/dashboard/explorer(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/explorer(?:/)?$"
+    },
+    {
+      "page": "/dashboard/multimodal",
+      "regex": "^/dashboard/multimodal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/multimodal(?:/)?$"
+    },
+    {
+      "page": "/dashboard/network",
+      "regex": "^/dashboard/network(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/network(?:/)?$"
+    },
+    {
+      "page": "/dashboard/provenance",
+      "regex": "^/dashboard/provenance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/provenance(?:/)?$"
+    },
+    {
+      "page": "/dashboard/settings",
+      "regex": "^/dashboard/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/settings(?:/)?$"
+    },
+    {
+      "page": "/dashboard/shared",
+      "regex": "^/dashboard/shared(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/shared(?:/)?$"
+    },
+    {
+      "page": "/dashboard/workflows",
+      "regex": "^/dashboard/workflows(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/workflows(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

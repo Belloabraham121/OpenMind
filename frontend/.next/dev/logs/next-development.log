@@ -1,0 +1,202 @@
+[00:00:03.319] Server  LOG     
+[00:00:03.319] Server  LOG        We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+[00:00:03.319] Server  LOG        The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+[00:00:03.319] Server  LOG        	- include was updated to add '.next/dev/types/**/*.ts'
+[00:00:03.319] Server  LOG     
+[00:00:03.402] Server  LOG      ✓ Ready in 3.2s
+[00:00:05.831] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:06.581] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <LoadingBoundary name="/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={<SegmentViewNode>} forbidden={undefined} unauthorized={undefined}>
+        <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<SegmentViewNode>} forbidden={undefined} ...>
+          <RedirectBoundary>
+            <RedirectErrorBoundary router={{...}}>
+              <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{lazyData:null, ...}} segmentPath={[...]} ...>
+                <SegmentViewNode type="page" pagePath="/Documents...">
+                  <SegmentTrieNode>
+                  <Home>
+                    <main className="relative m...">
+                      <Navigation>
+                      <HeroSection>
+                      ...
+                        <AnimatedVisual type="ai">
+                          <AIVisual>
+                            <svg viewBox="0 0 200 160" className="w-full h-full">
+                              <circle>
+                              <g>
+                              <g>
+                              <g>
+                              <g>
+                              <g>
+                                <line
+                                  x1="100"
+                                  y1="80"
+                                  x2={74.99999999999997}
++                                 y2={36.69872981077808}
+-                                 y2="36.698729810778076"
+                                  stroke="currentColor"
+                                  strokeWidth="1"
+                                  opacity="0.3"
+                                >
+                                <circle
+                                  cx={74.99999999999997}
++                                 cy={36.69872981077808}
+-                                 cy="36.698729810778076"
+                                  r="6"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                              ...
+                              ...
+                      <HowItWorksSection>
+                      <InfrastructureSection>
+                      <MetricsSection>
+                        <section id="studio" ref={{current:null}} className="relative p...">
+                          <div className="max-w-[140...">
+                            <div className="flex flex-...">
+                              <div>
+                              <div className="flex items...">
+                                <span>
+                                <span>
+                                <span>
++                                 03:26:48
+-                                 3:26:48 AM
+                            ...
+                      ...
+                ...
+              ...
+
+[00:00:06.750] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:00:06.750] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:00:06.750] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:00:06.750] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","r":"","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774405609269} /_vercel/insights/view
+[00:00:06.750] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774405609270} /_vercel/insights/view
+[00:03:48.262] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:03:48.543] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <LoadingBoundary name="/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={<SegmentViewNode>} forbidden={undefined} unauthorized={undefined}>
+        <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<SegmentViewNode>} forbidden={undefined} ...>
+          <RedirectBoundary>
+            <RedirectErrorBoundary router={{...}}>
+              <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{lazyData:null, ...}} segmentPath={[...]} ...>
+                <SegmentViewNode type="page" pagePath="/Documents...">
+                  <SegmentTrieNode>
+                  <Home>
+                    <main className="relative m...">
+                      <Navigation>
+                      <HeroSection>
+                      ...
+                        <AnimatedVisual type="ai">
+                          <AIVisual>
+                            <svg viewBox="0 0 200 160" className="w-full h-full">
+                              <circle>
+                              <g>
+                              <g>
+                              <g>
+                              <g>
+                              <g>
+                                <line
+                                  x1="100"
+                                  y1="80"
+                                  x2={74.99999999999997}
++                                 y2={36.69872981077808}
+-                                 y2="36.698729810778076"
+                                  stroke="currentColor"
+                                  strokeWidth="1"
+                                  opacity="0.3"
+                                >
+                                <circle
+                                  cx={74.99999999999997}
++                                 cy={36.69872981077808}
+-                                 cy="36.698729810778076"
+                                  r="6"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                              ...
+                              ...
+                      <HowItWorksSection>
+                      <InfrastructureSection>
+                      <MetricsSection>
+                        <section id="studio" ref={{current:null}} className="relative p...">
+                          <div className="max-w-[140...">
+                            <div className="flex flex-...">
+                              <div>
+                              <div className="flex items...">
+                                <span>
+                                <span>
+                                <span>
++                                 03:30:30
+-                                 3:30:30 AM
+                            ...
+                      ...
+                ...
+              ...
+
+[00:03:48.543] Browser LOG     %c[Vercel Web Analytics]%c Debug mode is enabled by default in development. No requests will be sent to the server. color: rgb(120, 120, 120) color: inherit
+[00:03:48.543] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:03:48.543] Browser LOG     %c[Vercel Web Analytics]%c Running queued event color: rgb(120, 120, 120) color: inherit pageview {"path":"/","route":"/"}
+[00:03:48.543] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","r":"","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774405831104} /_vercel/insights/view
+[00:03:48.543] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/ color: rgb(120, 120, 120) color: inherit {"dp":"/","o":"http://localhost:3000/","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774405831104} /_vercel/insights/view
+[00:05:17.962] Server  WARN     ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:05:18.036] Server  LOG      ✓ Compiled in 46ms
+[00:05:24.496] Server  LOG      ✓ Compiled in 361ms
+[00:05:29.377] Server  LOG      ✓ Compiled in 273ms
+[00:05:30.125] Server  LOG      ✓ Compiled in 389ms
+[00:05:59.373] Server  LOG      ✓ Compiled in 0ms
+[00:06:25.778] Server  LOG      ✓ Compiled in 153ms
+[00:06:30.068] Server  LOG      ✓ Compiled in 0ms
+[00:06:33.938] Server  LOG      ✓ Compiled in 0ms
+[00:06:37.825] Server  LOG      ✓ Compiled in 596ms
+[00:06:39.982] Server  LOG      ✓ Compiled in 0ms
+[00:06:43.759] Server  LOG      ✓ Compiled in 0ms
+[00:07:01.468] Server  LOG      ✓ Compiled in 504ms
+[00:07:03.617] Server  LOG      ✓ Compiled in 1376ms
+[00:07:05.840] Server  LOG      ✓ Compiled in 193ms
+[00:07:06.791] Server  LOG      ✓ Compiled in 384ms
+[00:07:07.081] Server  LOG      ✓ Compiled in 249ms
+[00:07:07.975] Server  LOG      ✓ Compiled in 256ms
+[00:07:08.755] Server  LOG      ✓ Compiled in 247ms
+[00:07:50.021] Server  LOG      ○ Compiling /login ...
+[00:07:53.298] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:07:53.298] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/login color: rgb(120, 120, 120) color: inherit {"dp":"/login","o":"http://localhost:3000/login","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406075862} /_vercel/insights/view
+[00:08:19.378] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard","o":"http://localhost:3000/dashboard","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406101932} /_vercel/insights/view
+[00:08:41.169] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/explorer color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/explorer","o":"http://localhost:3000/dashboard/explorer","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406123735} /_vercel/insights/view
+[00:08:48.757] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/workflows color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/workflows","o":"http://localhost:3000/dashboard/workflows","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406131322} /_vercel/insights/view
+[00:08:52.581] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/provenance color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/provenance","o":"http://localhost:3000/dashboard/provenance","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406135128} /_vercel/insights/view
+[00:08:59.022] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/shared color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/shared","o":"http://localhost:3000/dashboard/shared","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406141581} /_vercel/insights/view
+[00:09:02.584] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/multimodal color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/multimodal","o":"http://localhost:3000/dashboard/multimodal","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406145149} /_vercel/insights/view
+[00:09:10.339] Server  LOG      ○ Compiling /dashboard/durability ...
+[00:09:12.685] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/durability color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/durability","o":"http://localhost:3000/dashboard/durability","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406155246} /_vercel/insights/view
+[00:09:20.336] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/network color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/network","o":"http://localhost:3000/dashboard/network","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406162896} /_vercel/insights/view
+[00:09:29.636] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/api color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/api","o":"http://localhost:3000/dashboard/api","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406172202} /_vercel/insights/view
+[00:09:33.270] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/billing color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/billing","o":"http://localhost:3000/dashboard/billing","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406175762} /_vercel/insights/view
+[00:09:36.235] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard/settings color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard/settings","o":"http://localhost:3000/dashboard/settings","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406178800} /_vercel/insights/view
+[00:09:39.631] Browser LOG     %c[Vercel Web Analytics]%c [view] http://localhost:3000/dashboard color: rgb(120, 120, 120) color: inherit {"dp":"/dashboard","o":"http://localhost:3000/dashboard","sdkn":"@vercel/analytics/next","sdkv":"1.3.1","sv":"0.1.3","ts":1774406182196} /_vercel/insights/view

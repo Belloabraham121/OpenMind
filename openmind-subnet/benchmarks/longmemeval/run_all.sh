@@ -21,6 +21,8 @@ CALL_DELAY="${CALL_DELAY:-0.5}"
 MAX_QUESTIONS="${MAX_QUESTIONS:-0}"
 SKIP_INGEST="${SKIP_INGEST:-false}"
 SKIP_EXTRACTION="${SKIP_EXTRACTION:-false}"
+OPENMIND_STORAGE_BACKEND="${OPENMIND_STORAGE_BACKEND:-legacy}"
+OPENMIND_STORAGE_DUAL_WRITE="${OPENMIND_STORAGE_DUAL_WRITE:-false}"
 
 BASE_URL_FLAG=""
 if [ -n "${OPENAI_BASE_URL:-}" ]; then
@@ -42,6 +44,11 @@ if [ "$SKIP_EXTRACTION" = "true" ]; then
     SKIP_EXTRACT_FLAG="--skip-extraction"
 fi
 
+DUAL_WRITE_FLAG=""
+if [ "$OPENMIND_STORAGE_DUAL_WRITE" = "true" ]; then
+    DUAL_WRITE_FLAG="--dual-write"
+fi
+
 echo "============================================"
 echo "  OpenMind LongMemEval Benchmark"
 echo "  Label:       $LABEL"
@@ -53,6 +60,7 @@ echo "  Max Qs:      ${MAX_QUESTIONS} (0=all)"
 echo "  Call Delay:  ${CALL_DELAY}s"
 echo "  Skip Ingest: $SKIP_INGEST"
 echo "  Skip Extract:$SKIP_EXTRACTION"
+echo "  Storage:     $OPENMIND_STORAGE_BACKEND (dual_write=$OPENMIND_STORAGE_DUAL_WRITE)"
 echo "  Base:        ${OPENAI_BASE_URL:-api.openai.com}"
 echo "============================================"
 echo
@@ -84,7 +92,9 @@ else
     python direct_ingest.py \
         --data "$DATA_FILE" \
         $MAX_Q_FLAG \
-        $SKIP_EXTRACT_FLAG
+        $SKIP_EXTRACT_FLAG \
+        --storage-backend "$OPENMIND_STORAGE_BACKEND" \
+        $DUAL_WRITE_FLAG
     echo
     echo "  *** Please restart the miner now so it loads the new data. ***"
     echo "  Press ENTER when the miner is running again..."

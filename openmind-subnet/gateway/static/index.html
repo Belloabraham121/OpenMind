@@ -56,6 +56,20 @@
     padding: 6px 12px; border-radius: var(--radius); font-size: 13px; width: 220px;
   }
   .session-input:focus { outline: none; border-color: var(--accent-dim); }
+  .small-input {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius: var(--radius); font-size: 12px; width: 180px;
+  }
+  .small-input:focus { outline: none; border-color: var(--accent-dim); }
+  .small-label { font-size: 11px; color: var(--muted); }
+  .mode-pill {
+    border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px;
+    font-size: 11px; color: var(--muted); cursor: pointer; user-select: none;
+    background: transparent;
+  }
+  .mode-pill.active {
+    border-color: var(--accent-dim); color: #fff; background: var(--accent-dim);
+  }
   .token-badge {
     background: #7c3aed22; color: var(--accent); font-size: 11px; padding: 3px 8px;
     border-radius: 4px; font-weight: 600;
@@ -193,6 +207,12 @@
   <h1>OpenMind <span>Memory Console</span></h1>
   <div class="spacer"></div>
   <span class="token-badge" id="tokenBadge" style="display:none">0 tokens</span>
+  <span class="small-label">Assistant:</span>
+  <button type="button" class="mode-pill active" id="modeMemory">Memory-Only</button>
+  <button type="button" class="mode-pill" id="modeOpenAI">OpenAI</button>
+  <input class="small-input" id="apiBase" placeholder="API base (auto)" title="Gateway API base URL">
+  <input class="small-input" id="openaiModel" value="gpt-4o-mini" spellcheck="false" title="OpenAI model">
+  <input class="small-input" id="openaiKey" type="password" placeholder="OpenAI API Key (for testing)">
   <label style="font-size:12px;color:var(--muted);">Session:</label>
   <input class="session-input" id="sessionId" value="demo-session" spellcheck="false">
   <div class="health-dot" id="healthDot" title="Gateway status"></div>
@@ -206,7 +226,7 @@
     </div>
     <div class="chat-input-row">
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="Type a memory to store..."></textarea>
-      <button class="btn" id="sendBtn" onclick="sendMessage()">Send</button>
+      <button type="button" class="btn" id="sendBtn">Send</button>
     </div>
   </section>
 
@@ -214,11 +234,11 @@
     <div class="memory-header">
       <h2>Memory Explorer</h2>
       <div class="view-toggle">
-        <button class="active" id="viewFacts" onclick="setView('facts')">Facts</button>
-        <button id="viewFull" onclick="setView('full')">Full History</button>
+        <button type="button" class="active" id="viewFacts">Facts</button>
+        <button type="button" id="viewFull">Full History</button>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="compactSession()">Compact</button>
-      <button class="btn btn-outline btn-sm" onclick="refreshMemories()" id="refreshBtn">Refresh</button>
+      <button type="button" class="btn btn-outline btn-sm" id="compactBtn">Compact</button>
+      <button type="button" class="btn btn-outline btn-sm" id="refreshBtn">Refresh</button>
     </div>
     <div class="memory-list" id="memoryList">
       <div class="empty-state">No memories loaded yet. Click Refresh.</div>
@@ -227,7 +247,19 @@
 </main>
 
 <script>
-const API = window.location.origin;
+function getDefaultApiBase() {
+  const p = window.location.port;
+  // If opened from Live Server or static host, point to gateway by default.
+  if (p === "5500" || p === "3000" || p === "5173") {
+    return "http://127.0.0.1:8090";
+  }
+  return window.location.origin;
+}
+
+function getApiBase() {
+  const v = (document.getElementById("apiBase")?.value || "").trim();
+  return v || getDefaultApiBase();
+}
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -236,8 +268,41 @@ const healthDot = document.getElementById("healthDot");
 const healthLabel = document.getElementById("healthLabel");
 const sessionInput = document.getElementById("sessionId");
 const tokenBadge = document.getElementById("tokenBadge");
+const apiBaseInput = document.getElementById("apiBase");
+const openaiKeyInput = document.getElementById("openaiKey");
+const openaiModelInput = document.getElementById("openaiModel");
+const modeMemoryBtn = document.getElementById("modeMemory");
+const modeOpenAIBtn = document.getElementById("modeOpenAI");
+const viewFactsBtn = document.getElementById("viewFacts");
+const viewFullBtn = document.getElementById("viewFull");
+const compactBtn = document.getElementById("compactBtn");
+const refreshBtn = document.getElementById("refreshBtn");
 
 let currentView = "facts";
+let assistantMode = localStorage.getItem("om_assistant_mode") || "memory";
+
+function setAssistantMode(mode) {
+  assistantMode = mode;
+  localStorage.setItem("om_assistant_mode", mode);
+  modeMemoryBtn.className = "mode-pill" + (mode === "memory" ? " active" : "");
+  modeOpenAIBtn.className = "mode-pill" + (mode === "openai" ? " active" : "");
+}
+
+function loadSettings() {
+  const savedModel = localStorage.getItem("om_openai_model") || "gpt-4o-mini";
+  const savedApi = localStorage.getItem("om_api_base") || getDefaultApiBase();
+  openaiKeyInput.value = "";
+  openaiKeyInput.placeholder = "Using server .env";
+  openaiKeyInput.disabled = true;
+  apiBaseInput.value = savedApi;
+  openaiModelInput.value = savedModel;
+  setAssistantMode(assistantMode);
+}
+
+function persistSettings() {
+  localStorage.setItem("om_openai_model", openaiModelInput.value.trim() || "gpt-4o-mini");
+  localStorage.setItem("om_api_base", apiBaseInput.value.trim() || getDefaultApiBase());
+}
 
 function getSession() {
   return sessionInput.value.trim() || "demo-session";
@@ -267,6 +332,7 @@ function addMsg(text, cls, label) {
 }
 
 async function storeOnSubnet(content, role) {
+  const API = getApiBase();
   const res = await fetch(API + "/v1/memory/store", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -275,7 +341,72 @@ async function storeOnSubnet(content, role) {
   return await res.json();
 }
 
-async function sendMessage() {
+async function fetchMemoryContextForPrompt(userText) {
+  const API = getApiBase();
+  const res = await fetch(API + "/v1/memory/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: getSession(),
+      query: userText,
+      top_k: 30,
+      smart: true
+    }),
+  });
+  const data = await res.json();
+
+  let context = "";
+  if (data.anchor && data.anchor.content) {
+    context += "Session anchor:\n" + data.anchor.content + "\n\n";
+  }
+  const facts = data.facts || [];
+  if (facts.length) {
+    context += "Facts:\n";
+    facts.slice(0, 20).forEach(f => {
+      context += "- " + (f.content || "") + "\n";
+    });
+    context += "\n";
+  }
+  const sources = data.sources || [];
+  if (sources.length) {
+    context += "Source snippets:\n";
+    sources.slice(0, 8).forEach(s => {
+      const text = (s.content || "").slice(0, 400);
+      context += "- " + text + "\n";
+    });
+  }
+  return context.trim();
+}
+
+async function callOpenAI(userText, memoryContext) {
+  const model = openaiModelInput.value.trim() || "gpt-4o-mini";
+  persistSettings();
+  const API = getApiBase();
+  const res = await fetch(API + "/v1/chat/respond", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      session_id: getSession(),
+      user_message: userText,
+      model: model,
+      top_k: 30,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error("Gateway chat error: " + err);
+  }
+  const data = await res.json();
+  return (data.response || "").trim();
+}
+
+async function sendMessage(evt) {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
   const text = chatInput.value.trim();
   if (!text) return;
   chatInput.value = "";
@@ -288,10 +419,17 @@ async function sendMessage() {
 
     if (stored && stored.status === "stored") {
       const fc = stored.fact_count || 0;
-      const aiResponse = "Stored on OpenMind (chunk " + stored.id.slice(0, 8)
+      let aiResponse = "Stored on OpenMind (chunk " + stored.id.slice(0, 8)
         + "…). Extracted " + fc + " fact(s). I can recall this in future sessions.";
+
+      if (assistantMode === "openai") {
+        const memoryContext = await fetchMemoryContextForPrompt(text);
+        aiResponse = await callOpenAI(text, memoryContext);
+      }
+
       addMsg(aiResponse, "assistant", "Assistant");
       await storeOnSubnet(aiResponse, "assistant");
+      await refreshMemories();
     } else {
       addMsg("Sent to miners. Awaiting confirmation.", "system");
     }
@@ -303,6 +441,7 @@ async function sendMessage() {
 
 async function compactSession() {
   try {
+    const API = getApiBase();
     const res = await fetch(API + "/v1/memory/compact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -392,6 +531,7 @@ async function refreshMemories() {
   const useSmart = currentView === "facts";
 
   try {
+    const API = getApiBase();
     const res = await fetch(API + "/v1/memory/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -454,6 +594,7 @@ function escapeHtml(s) {
 
 async function pollHealth() {
   try {
+    const API = getApiBase();
     const res = await fetch(API + "/v1/health");
     const data = await res.json();
     const ok = data.status === "ok" && data.subtensor && data.dendrite;
@@ -474,8 +615,45 @@ chatInput.addEventListener("keydown", (e) => {
   }
 });
 
+sendBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  sendMessage(e);
+});
+
+modeMemoryBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  setAssistantMode("memory");
+});
+modeOpenAIBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  setAssistantMode("openai");
+});
+viewFactsBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  setView("facts");
+});
+viewFullBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  setView("full");
+});
+compactBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  compactSession();
+});
+refreshBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  refreshMemories();
+});
+
+// Defensive: block any implicit form submit that may be injected by extensions.
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+}, true);
+
 pollHealth();
 setInterval(pollHealth, 5000);
+loadSettings();
 </script>
 </body>
 </html>

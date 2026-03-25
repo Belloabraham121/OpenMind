@@ -27,8 +27,15 @@ os.environ.setdefault(
     str(_SUBNET_ROOT / ".openmind_storage"),
 )
 
-from openmind import storage, extraction, graph  # noqa: E402
+from openmind import storage, storage_v2, extraction, graph  # noqa: E402
 from tqdm import tqdm  # noqa: E402
+
+
+def _select_storage(backend: str):
+    b = (backend or "legacy").lower()
+    if b == "sqlite":
+        return storage_v2
+    return storage
 
 
 def _format_session(turns: list) -> str:
@@ -42,24 +49,39 @@ def _format_session(turns: list) -> str:
     return "\n\n".join(parts)
 
 
-def _store_chunk(session_id, content, embedding, metadata):
+def _store_chunk(session_id, content, embedding, metadata, primary_storage, secondary_storage=None):
     """Write a chunk directly to disk."""
     chunk_id = metadata.get("id", "")
     if chunk_id:
-        storage.store_chunk(
+        primary_storage.store_chunk(
             session_id=session_id,
             chunk_id=chunk_id,
             content=content,
             embedding=embedding,
             metadata=metadata,
         )
+        if secondary_storage is not None:
+            secondary_storage.store_chunk(
+                session_id=session_id,
+                chunk_id=chunk_id,
+                content=content,
+                embedding=embedding,
+                metadata=metadata,
+            )
 
 
 def direct_ingest(
     data_path: str,
     max_questions: int = 0,
     skip_extraction: bool = False,
+    storage_backend: str = "legacy",
+    dual_write: bool = False,
 ):
+    primary_storage = _select_storage(storage_backend)
+    secondary_storage = None
+    if dual_write:
+        secondary_storage = storage if primary_storage is storage_v2 else storage_v2
+
     data = json.loads(Path(data_path).read_text(encoding="utf-8"))
     if not isinstance(data, list):
         data = data.get("questions", data.get("data", [data]))
@@ -95,6 +117,8 @@ def direct_ingest(
                 session_id=qid,
                 content=text,
                 embedding=[],
+                primary_storage=primary_storage,
+                secondary_storage=secondary_storage,
                 metadata={
                     "id": chunk_id,
                     "type": "episode",
@@ -125,6 +149,8 @@ def direct_ingest(
                         session_id=qid,
                         content=fact["content"],
                         embedding=[],
+                        primary_storage=primary_storage,
+                        secondary_storage=secondary_storage,
                         metadata={
                             "id": fact["id"],
                             "type": "fact",
@@ -149,10 +175,15 @@ def direct_ingest(
                     for edge in edges:
                         if edge["relation"] == "supersedes":
                             old_id = edge["target_id"]
-                            storage.update_chunk_metadata(
+                            primary_storage.update_chunk_metadata(
                                 qid, old_id,
                                 {"is_latest": False, "valid_until": ts},
                             )
+                            if secondary_storage is not None:
+                                secondary_storage.update_chunk_metadata(
+                                    qid, old_id,
+                                    {"is_latest": False, "valid_until": ts},
+                                )
 
                     session_facts.append(fact)
 
@@ -164,6 +195,8 @@ def direct_ingest(
                         session_id=qid,
                         content=anchor["content"],
                         embedding=[],
+                        primary_storage=primary_storage,
+                        secondary_storage=secondary_storage,
                         metadata=anchor,
                     )
             except Exception:
@@ -175,7 +208,10 @@ def direct_ingest(
         f"across {len(data)} questions."
     )
     print(
-        f"Storage dir: {storage.BASE_DIR}"
+        f"Storage backend: {'sqlite' if primary_storage is storage_v2 else 'legacy'}"
+    )
+    print(
+        f"Storage dir: {primary_storage.BASE_DIR}"
     )
     print(
         "\n*** IMPORTANT: Restart the miner so it loads the new data! ***"
@@ -202,8 +238,26 @@ def main():
         action="store_true",
         help="Skip fact extraction (store raw episodes only — faster but no smart retrieval)",
     )
+    parser.add_argument(
+        "--storage-backend",
+        default=os.environ.get("OPENMIND_STORAGE_BACKEND", "legacy"),
+        choices=["legacy", "sqlite"],
+        help="Storage backend for ingest writes",
+    )
+    parser.add_argument(
+        "--dual-write",
+        action="store_true",
+        default=os.environ.get("OPENMIND_STORAGE_DUAL_WRITE", "false").lower() == "true",
+        help="Write to both legacy and sqlite backends",
+    )
     args = parser.parse_args()
-    direct_ingest(args.data, args.max_questions, args.skip_extraction)
+    direct_ingest(
+        args.data,
+        args.max_questions,
+        args.skip_extraction,
+        args.storage_backend,
+        args.dual_write,
+    )
 
 
 if __name__ == "__main__":

@@ -21,6 +21,8 @@ from openmind.protocol import OpenMindRequest
 from openmind.utils.uids import get_random_uids
 
 from gateway.models import (
+    ChatRequest,
+    ChatResponse,
     CheckpointResumeRequest,
     CheckpointSaveRequest,
     CompactRequest,
@@ -58,6 +60,7 @@ _validator: Any = None
 _gw_dendrite: Any = None
 _gw_loop: Any = None
 _gw_thread: Any = None
+_chat_env_loaded = False
 
 
 def configure(validator: Any) -> None:
@@ -91,6 +94,38 @@ def configure(validator: Any) -> None:
 
     _gw_loop.call_soon_threadsafe(asyncio.ensure_future, _make_dendrite())
     _gw_dendrite = fut.result(timeout=10)
+
+
+def _load_gateway_env_once() -> None:
+    """Load gateway/.env once if OPENAI_API_KEY isn't present in process env."""
+    global _chat_env_loaded
+    if _chat_env_loaded:
+        return
+    _chat_env_loaded = True
+    if os.environ.get("OPENAI_API_KEY"):
+        return
+
+    env_path = Path(__file__).parent / ".env"
+    if not env_path.exists():
+        return
+
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            if s.startswith("export "):
+                s = s[len("export "):]
+            if "=" not in s:
+                continue
+            k, v = s.split("=", 1)
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
+            if k and k not in os.environ:
+                os.environ[k] = v
+    except Exception:
+        # Non-fatal: endpoint will return a clean config error.
+        return
 
 
 def _require_validator():
@@ -145,6 +180,42 @@ async def _query_miners(synapse: OpenMindRequest, k: int = 4) -> List[Any]:
         None, future.result, 15.0
     )
     return responses
+
+
+async def _call_openai_chat(model: str, prompt: str) -> str:
+    """Call OpenAI-compatible chat endpoint using server-side env credentials."""
+    import httpx
+
+    _load_gateway_env_once()
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY not configured in server environment or gateway/.env",
+        )
+
+    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    url = f"{base_url}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "temperature": 0.2,
+        "max_tokens": 400,
+        "messages": [
+            {"role": "system", "content": "You are a concise assistant integrated with OpenMind memory."},
+            {"role": "user", "content": prompt},
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        resp = await client.post(url, headers=headers, json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"OpenAI API error: {resp.text[:400]}")
+        data = resp.json()
+        return (data.get("choices", [{}])[0].get("message", {}).get("content", "") or "").strip()
 
 
 def _expand_time_references(query: Optional[str]) -> tuple:
@@ -316,6 +387,66 @@ async def space_query(body: SharedSpaceQueryRequest):
     )
     responses = await _query_miners(synapse)
     return _best_response(responses)
+
+
+@app.post("/v1/chat/respond", response_model=ChatResponse)
+async def chat_respond(body: ChatRequest):
+    """
+    Generate an assistant response using server-side OpenAI credentials and
+    OpenMind retrieval context.
+    """
+    # 1) Retrieve memory context from subnet
+    expanded_query, resolved_time = _expand_time_references(body.user_message)
+    synapse = OpenMindRequest(
+        session_id=body.session_id,
+        query=expanded_query,
+        top_k=body.top_k,
+        as_of_timestamp=resolved_time,
+        filters={"_action": "query_smart"},
+    )
+    responses = await _query_miners(synapse)
+    result = _best_response(responses)
+
+    anchor = None
+    facts: List[Dict[str, Any]] = []
+    sources: List[Dict[str, Any]] = []
+    if result.results and isinstance(result.results[0], dict):
+        smart_data = result.results[0]
+        if "facts" in smart_data:
+            anchor = smart_data.get("anchor")
+            facts = smart_data.get("facts") or []
+            sources = smart_data.get("sources") or []
+
+    # 2) Build prompt
+    ctx_parts: List[str] = []
+    if anchor and isinstance(anchor, dict):
+        a = anchor.get("content", "")
+        if a:
+            ctx_parts.append("Session anchor:\n" + a)
+    if facts:
+        lines = [f"- {f.get('content','')}" for f in facts[:20] if f.get("content")]
+        if lines:
+            ctx_parts.append("Facts:\n" + "\n".join(lines))
+    if sources:
+        lines = [f"- {(s.get('content','') or '')[:400]}" for s in sources[:8]]
+        if lines:
+            ctx_parts.append("Source snippets:\n" + "\n".join(lines))
+
+    context_text = "\n\n".join([p for p in ctx_parts if p]).strip()
+    prompt = (
+        "Use only the provided memory context and user message.\n"
+        "If memory is insufficient, say what is missing.\n\n"
+        f"Memory context:\n{context_text or '(none)'}\n\n"
+        f"User:\n{body.user_message}"
+    )
+
+    # 3) Call model with server-side key
+    response_text = await _call_openai_chat(body.model, prompt)
+    return ChatResponse(
+        response=response_text,
+        model=body.model,
+        token_estimate=_estimate_tokens(context_text),
+    )
 
 
 @app.get("/v1/health", response_model=HealthResponse)

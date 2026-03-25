@@ -70,6 +70,13 @@ class SharedSpaceQueryRequest(BaseModel):
     auth_metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatRequest(BaseModel):
+    session_id: str
+    user_message: str
+    model: str = "gpt-4o-mini"
+    top_k: int = 30
+
+
 # ---------------------------------------------------------------------------
 # Response bodies
 # ---------------------------------------------------------------------------
@@ -91,3 +98,9 @@ class HealthResponse(BaseModel):
     metagraph_n: int
     dendrite: bool
     validator_step: int
+
+
+class ChatResponse(BaseModel):
+    response: str
+    model: str
+    token_estimate: Optional[int] = None

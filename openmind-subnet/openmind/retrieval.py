@@ -13,12 +13,14 @@ survive miner restarts.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from openmind import storage
+from openmind import storage_v2
 
 try:
     from rank_bm25 import BM25Okapi
@@ -37,6 +39,16 @@ class MemoryChunk:
 
 _CHUNKS: List[MemoryChunk] = []
 _loaded = False
+_STORAGE_BACKEND = os.environ.get("OPENMIND_STORAGE_BACKEND", "legacy").lower()
+_DUAL_WRITE = os.environ.get("OPENMIND_STORAGE_DUAL_WRITE", "false").lower() == "true"
+
+
+def _primary_storage():
+    return storage_v2 if _STORAGE_BACKEND == "sqlite" else storage
+
+
+def _secondary_storage():
+    return storage if _STORAGE_BACKEND == "sqlite" else storage_v2
 
 
 def _ensure_loaded() -> None:
@@ -45,7 +57,7 @@ def _ensure_loaded() -> None:
     if _loaded:
         return
     _loaded = True
-    for raw in storage.load_all_chunks():
+    for raw in _primary_storage().load_all_chunks():
         emb = raw.get("embedding") or []
         _CHUNKS.append(
             MemoryChunk(
@@ -96,13 +108,21 @@ def add_chunk(
         )
 
     if chunk_id:
-        storage.store_chunk(
+        _primary_storage().store_chunk(
             session_id=session_id,
             chunk_id=chunk_id,
             content=content,
             embedding=embedding,
             metadata=meta,
         )
+        if _DUAL_WRITE:
+            _secondary_storage().store_chunk(
+                session_id=session_id,
+                chunk_id=chunk_id,
+                content=content,
+                embedding=embedding,
+                metadata=meta,
+            )
 
 
 def update_fact_latest(session_id: str, fact_id: str, is_latest: bool) -> None:

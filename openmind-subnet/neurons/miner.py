@@ -6,6 +6,7 @@ synapse defined in `openmind.protocol`.
 """
 
 import datetime
+import os
 import time
 import typing as t
 import uuid
@@ -14,6 +15,7 @@ import bittensor as bt
 
 from openmind.protocol import OpenMindRequest
 from openmind import retrieval, storage, durability, versioning, checkpoint, shared_space
+from openmind import storage_v2
 from openmind import extraction, graph
 
 
@@ -97,6 +99,16 @@ class Miner:
             self.axon = None
 
         self.should_exit = False
+        self.storage_backend = os.environ.get("OPENMIND_STORAGE_BACKEND", "legacy").lower()
+        self.storage_dual_write = (
+            os.environ.get("OPENMIND_STORAGE_DUAL_WRITE", "false").lower() == "true"
+        )
+
+    def _primary_storage(self):
+        return storage_v2 if self.storage_backend == "sqlite" else storage
+
+    def _secondary_storage(self):
+        return storage if self.storage_backend == "sqlite" else storage_v2
 
     async def forward(self, synapse: OpenMindRequest) -> OpenMindRequest:
         """
@@ -186,10 +198,15 @@ class Miner:
                     if edge["relation"] == "supersedes":
                         old_id = edge["target_id"]
                         retrieval.update_fact_latest(synapse.session_id, old_id, False)
-                        storage.update_chunk_metadata(
+                        self._primary_storage().update_chunk_metadata(
                             synapse.session_id, old_id,
                             {"is_latest": False, "valid_until": ts},
                         )
+                        if self.storage_dual_write:
+                            self._secondary_storage().update_chunk_metadata(
+                                synapse.session_id, old_id,
+                                {"is_latest": False, "valid_until": ts},
+                            )
 
                 existing_facts.append(fact)
 
