@@ -14,6 +14,8 @@ import {
   sessionExpiresAt,
   setSessionCookie,
 } from "@/lib/auth-session"
+import { ensureDashboardForUser } from "@/lib/dashboard-db"
+import { recordActivity } from "@/lib/record-activity"
 
 export const runtime = "nodejs"
 
@@ -179,6 +181,17 @@ export async function POST(request: Request) {
       { error: "Account created but session could not be set." },
       { status: 500 },
     )
+  }
+
+  try {
+    await ensureDashboardForUser(insertedId)
+    await recordActivity({
+      userId: insertedId,
+      kind: "auth_register",
+      summary: "Account created",
+    })
+  } catch (e) {
+    logRegisterError("dashboardBootstrap", e)
   }
 
   return NextResponse.json({

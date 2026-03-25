@@ -9,11 +9,11 @@ Mark items `[x]` when done; keep them `[ ]` while pending.
 
 ## 0. Foundation
 
-- [ ] Add `.env.local` (and document in team notes): `NEXT_PUBLIC_API_BASE_URL`, feature flags
-- [ ] Create a single API client module (base URL, `fetch` wrappers, error parsing, auth header injection)
-- [ ] Define TypeScript types/DTOs aligned with backend responses (or generate from OpenAPI if you add it)
-- [ ] Replace demo cookie auth with real login/register/logout/refresh calls to the backend
-- [ ] Store session token securely (prefer **httpOnly cookie** set by backend; avoid localStorage for access tokens in production)
+- [x] Add `.env.local` (and document in team notes): `NEXT_PUBLIC_API_BASE_URL`, feature flags
+- [x] Create a single API client module (base URL, `fetch` wrappers, error parsing, auth header injection)
+- [x] Define TypeScript types/DTOs aligned with backend responses (or generate from OpenAPI if you add it)
+- [x] Replace demo cookie auth with real login/register/logout/refresh calls to the backend
+- [x] Store session token securely (prefer **httpOnly cookie** set by backend; avoid localStorage for access tokens in production)
 - [ ] Update Next.js middleware to validate session against backend (or verify JWT) instead of demo cookie only
 - [ ] Add global loading/error UI patterns for data fetching (per route or shared layout)
 
@@ -36,16 +36,16 @@ Mark items `[x]` when done; keep them `[ ]` while pending.
 
 ## 2. Dashboard — shared
 
-- [ ] **Current user / workspace** — `GET` profile + workspace list for header and settings
-- [ ] **Overview metrics** — `GET` aggregated KPIs (sessions, chunks, latency, success rate) — replace sample cards
-- [ ] **Activity feed** — `GET` paginated events (ingest, query, checkpoint, share) — replace static list
+- [x] **Current user / workspace** — `GET` profile + workspace list for header and settings
+- [x] **Overview metrics** — `GET` aggregated KPIs (sessions, chunks, latency, success rate) — replace sample cards
+- [x] **Activity feed** — `GET` paginated events (ingest, query, checkpoint, share) — replace static list
 
 ---
 
 ## 3. Dashboard — tab endpoints
 
-- [ ] **Memory Explorer** — `GET`/`POST` search (query, `top_k`, filters, tier) — bind to search UI + result cards
-- [ ] **Sessions & Workflows** — `GET` list + detail; **checkpoint resume** — `POST` with `workflow_id` / `resume_from_checkpoint`
+- [x] **Memory Explorer** — `GET`/`POST` search (query, `top_k`, filters, tier) — bind to search UI + result cards
+- [x] **Sessions & Workflows** — `GET` list + detail; **checkpoint resume** — `POST` with `workflow_id` / `resume_from_checkpoint`
 - [ ] **Provenance** — `GET`/`POST` time-travel (`as_of_timestamp`, `version_id`, `diff_since`) — bind to form + diff panel
 - [ ] **Shared Spaces** — `GET` spaces; `POST` create; **members** — add/remove; enforce errors for unauthorized
 - [ ] **Multimodal** — `GET` assets + ingest status; optional `POST` upload + poll status

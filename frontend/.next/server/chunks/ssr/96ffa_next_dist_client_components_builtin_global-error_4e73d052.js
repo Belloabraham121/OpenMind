@@ -1,3 +1,0 @@
-module.exports=[83372,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(35596);a.n(d("[project]/Documents/openmind/frontend/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},61343,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(35596);a.n(d("[project]/Documents/openmind/frontend/node_modules/next/dist/client/components/builtin/global-error.js"))},19362,a=>{"use strict";a.i(83372);var b=a.i(61343);a.n(b)}];
-
-//# sourceMappingURL=96ffa_next_dist_client_components_builtin_global-error_4e73d052.js.map

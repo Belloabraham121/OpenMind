@@ -9,18 +9,22 @@ export default function ApiPage() {
     <>
       <DashboardPageIntro
         title="API & MCP"
-        description="One endpoint for MCP-compatible tools: ingest, hybrid retrieval, time-travel, checkpoints, and shared spaces."
+        description="The marketing app never calls the validator directly from the browser. Use session-authenticated Next routes like /api/gateway/memory/query; set SUBNET_GATEWAY_URL on the server to forward to the FastAPI gateway."
       />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-foreground/10 shadow-none">
           <CardHeader>
             <CardTitle className="font-display text-xl">Endpoint</CardTitle>
-            <CardDescription>Rotate keys in production; this is a UI placeholder.</CardDescription>
+            <CardDescription>Production keys stay on the server; this UI is illustrative.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="font-mono text-xs uppercase tracking-wide">Base URL</Label>
-              <Input readOnly value="https://gateway.openmind.example/v1" className="font-mono text-sm" />
+              <Input
+                readOnly
+                value="Same origin · /api/gateway/memory/query, /store, /checkpoint/*, /health"
+                className="font-mono text-sm"
+              />
             </div>
             <div className="space-y-2">
               <Label className="font-mono text-xs uppercase tracking-wide">API key</Label>

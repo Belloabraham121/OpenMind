@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -24,6 +25,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { dashboardAccountNav, dashboardMainNav } from "@/components/dashboard/nav"
 import { ChevronRight, LogOut } from "lucide-react"
 import Link from "next/link"
+import { apiJson } from "@/lib/api-client"
+import type { MeResponse } from "@/lib/types/dashboard"
 
 const titleByPath: Record<string, string> = [...dashboardMainNav, ...dashboardAccountNav].reduce(
   (acc, item) => {
@@ -45,9 +48,38 @@ type DashboardHeaderProps = {
   pathname: string
 }
 
+function avatarInitials(email: string | null, phone: string | null): string {
+  if (email) {
+    const local = email.split("@")[0] ?? ""
+    return (local.slice(0, 2) || "OM").toUpperCase()
+  }
+  if (phone) {
+    const d = phone.replace(/\D/g, "")
+    return (d.slice(-2) || "OM").toUpperCase()
+  }
+  return "OM"
+}
+
 export function DashboardHeader({ pathname }: DashboardHeaderProps) {
   const router = useRouter()
   const title = resolveTitle(pathname)
+  const [accountLabel, setAccountLabel] = useState<string | null>(null)
+  const [initials, setInitials] = useState("OM")
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { ok, data } = await apiJson<MeResponse>("/api/me")
+      if (cancelled || !ok || !data?.user) return
+      const email = data.user.email
+      const phone = data.user.phone
+      setAccountLabel(email || phone || "Signed in")
+      setInitials(avatarInitials(email, phone))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -96,15 +128,15 @@ export function DashboardHeader({ pathname }: DashboardHeaderProps) {
             aria-label="Account menu"
           >
             <Avatar className="size-8 border border-border">
-              <AvatarFallback className="bg-foreground/5 font-mono text-xs">
-                OM
-              </AvatarFallback>
+              <AvatarFallback className="bg-foreground/5 font-mono text-xs">{initials}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel className="font-normal">
-            <span className="text-xs text-muted-foreground">Signed in (demo)</span>
+            <span className="text-xs text-muted-foreground break-all">
+              {accountLabel ?? "Loading…"}
+            </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>

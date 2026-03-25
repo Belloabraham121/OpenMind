@@ -12,6 +12,7 @@ import {
   sessionExpiresAt,
   setSessionCookie,
 } from "@/lib/auth-session"
+import { recordActivity } from "@/lib/record-activity"
 
 export const runtime = "nodejs"
 
@@ -61,6 +62,12 @@ export async function POST(request: Request) {
     expiresAt: sessionExpiresAt(),
   })
   await setSessionCookie(token)
+
+  await recordActivity({
+    userId: user._id!,
+    kind: "auth_login",
+    summary: "Signed in",
+  })
 
   return NextResponse.json({
     ok: true,

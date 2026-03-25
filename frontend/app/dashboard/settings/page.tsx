@@ -1,19 +1,65 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { apiFetch } from "@/lib/api-client"
+import { apiFetch, apiJson } from "@/lib/api-client"
+import type { MeResponse } from "@/lib/types/dashboard"
 import { toast } from "sonner"
 
 export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [workspaceName, setWorkspaceName] = useState("")
+  const [wsLoading, setWsLoading] = useState(false)
+  const [meLoading, setMeLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { ok, data } = await apiJson<MeResponse>("/api/me")
+      if (cancelled || !ok || !data?.workspaces?.length) {
+        setMeLoading(false)
+        return
+      }
+      const primary =
+        data.workspaces.find((w) => w.id === data.primaryWorkspaceId) ?? data.workspaces[0]
+      setWorkspaceId(primary.id)
+      setWorkspaceName(primary.name)
+      setMeLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function saveWorkspace() {
+    if (!workspaceId) return
+    setWsLoading(true)
+    try {
+      const res = await apiFetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, workspaceName }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast.error(data.error ?? "Could not save workspace.")
+        return
+      }
+      toast.success("Workspace updated.")
+    } catch {
+      toast.error("Network error.")
+    } finally {
+      setWsLoading(false)
+    }
+  }
 
   async function changePassword() {
     setLoading(true)
@@ -53,10 +99,21 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="ws">Name</Label>
-              <Input id="ws" defaultValue="OpenMind Labs" className="rounded-lg border-foreground/15" />
+              <Input
+                id="ws"
+                value={meLoading ? "" : workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                disabled={meLoading || !workspaceId}
+                placeholder={meLoading ? "Loading…" : "Workspace name"}
+                className="rounded-lg border-foreground/15"
+              />
             </div>
-            <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90">
-              Save changes
+            <Button
+              className="rounded-full bg-foreground text-background hover:bg-foreground/90"
+              onClick={() => void saveWorkspace()}
+              disabled={wsLoading || meLoading || !workspaceId}
+            >
+              {wsLoading ? "Saving…" : "Save changes"}
             </Button>
           </CardContent>
         </Card>

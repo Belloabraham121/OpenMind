@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { authCollections } from "@/lib/auth-db"
 import { AUTH_COOKIE_NAME } from "@/lib/auth-constants"
 import { hashToken } from "@/lib/auth-session"
+import { recordActivity } from "@/lib/record-activity"
 
 export const runtime = "nodejs"
 
@@ -63,6 +64,12 @@ export async function POST(request: Request) {
     { _id: user._id },
     { $set: { passwordHash, updatedAt: new Date() } },
   )
+
+  await recordActivity({
+    userId: user._id,
+    kind: "password_change",
+    summary: "Password updated",
+  })
 
   return NextResponse.json({ ok: true })
 }
