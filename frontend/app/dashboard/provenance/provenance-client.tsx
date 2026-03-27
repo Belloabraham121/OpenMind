@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { apiFetch, apiJson } from "@/lib/api-client"
 import { subnetSessionIdForUser } from "@/lib/subnet-session"
+import { JsonStructureView } from "@/components/dashboard/json-structure-view"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -17,8 +20,13 @@ export function ProvenanceClient() {
   const [versionId, setVersionId] = useState("")
   const [diffSince, setDiffSince] = useState("")
   const [loading, setLoading] = useState(false)
-  const [resultText, setResultText] = useState<string | null>(null)
+  const [resultPayload, setResultPayload] = useState<unknown>(null)
   const [meId, setMeId] = useState<string | null>(null)
+
+  const resultText = useMemo(
+    () => (resultPayload == null ? "" : JSON.stringify(resultPayload, null, 2)),
+    [resultPayload],
+  )
 
   const loadDefaultSession = useCallback(async () => {
     const { ok, data } = await apiJson<{ user?: { id: string } }>("/api/me")
@@ -35,7 +43,7 @@ export function ProvenanceClient() {
 
   async function runVersion() {
     setLoading(true)
-    setResultText(null)
+    setResultPayload(null)
     try {
       const sid = sessionId.trim()
       if (!sid) {
@@ -53,15 +61,15 @@ export function ProvenanceClient() {
         }),
       })
       const data = await res.json().catch(() => ({}))
+      setResultPayload(data)
       if (!res.ok) {
         toast.error((data as { error?: string }).error ?? "Version request failed.")
-        setResultText(JSON.stringify(data, null, 2))
         return
       }
-      setResultText(JSON.stringify(data, null, 2))
       toast.success("Loaded version response from gateway.")
     } catch {
       toast.error("Network error.")
+      setResultPayload({ error: "Network error while calling gateway." })
     } finally {
       setLoading(false)
     }
@@ -143,17 +151,44 @@ export function ProvenanceClient() {
         </div>
       </div>
       <Card className="border-foreground/10 shadow-none">
-        <CardHeader>
+        <CardHeader className="space-y-1">
           <CardTitle className="font-display text-xl">Gateway response</CardTitle>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Switch between a structured tree (keys, arrays, scalars) and raw JSON. Both views use the same
+            payload—including errors.
+          </p>
         </CardHeader>
         <CardContent>
-          {resultText ? (
-            <pre className="max-h-[480px] overflow-auto rounded-lg border border-foreground/10 bg-muted/30 p-4 font-mono text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
-              {resultText}
-            </pre>
+          {resultPayload != null ? (
+            <Tabs defaultValue="structured" className="w-full gap-3">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="structured" className="text-xs">
+                  Structured
+                </TabsTrigger>
+                <TabsTrigger value="json" className="font-mono text-xs">
+                  JSON
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="structured" className="mt-0">
+                <ScrollArea className="h-[min(520px,65vh)] rounded-lg border border-foreground/10 bg-muted/20">
+                  <div className="p-4">
+                    <JsonStructureView value={resultPayload} />
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="json" className="mt-0">
+                <ScrollArea className="h-[min(520px,65vh)] rounded-lg border border-foreground/10 bg-muted/30">
+                  <pre className="p-4 font-mono text-xs leading-relaxed whitespace-pre text-muted-foreground">
+                    {resultText}
+                  </pre>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Submit to see `version_diff`, `provenance_path`, and `results` from the subnet.
+              Run time-travel / diff to see <code className="text-xs">version_diff</code>,{" "}
+              <code className="text-xs">provenance_path</code>, and <code className="text-xs">results</code>{" "}
+              from the subnet.
             </p>
           )}
         </CardContent>
