@@ -1,12 +1,14 @@
+import { NextResponse } from "next/server"
 import { forwardSubnetJson, getSubnetGatewayBaseUrl } from "@/lib/gateway-proxy"
-import { getSessionUser } from "@/lib/require-session"
+import { getGatewayAuth, gatewayUnauthorized } from "@/lib/gateway-auth"
 
 export const runtime = "nodejs"
 
-export async function GET() {
-  const session = await getSessionUser()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
+export async function GET(request: Request) {
+  const auth = await getGatewayAuth(request)
+  if (auth instanceof NextResponse) return auth
+  if (!auth) {
+    return gatewayUnauthorized(request)
   }
 
   const configured = Boolean(getSubnetGatewayBaseUrl())

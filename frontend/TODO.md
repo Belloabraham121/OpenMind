@@ -46,12 +46,13 @@ Mark items `[x]` when done; keep them `[ ]` while pending.
 
 - [x] **Memory Explorer** — `GET`/`POST` search (query, `top_k`, filters, tier) — bind to search UI + result cards
 - [x] **Sessions & Workflows** — `GET` list + detail; **checkpoint resume** — `POST` with `workflow_id` / `resume_from_checkpoint`
-- [ ] **Provenance** — `GET`/`POST` time-travel (`as_of_timestamp`, `version_id`, `diff_since`) — bind to form + diff panel
-- [ ] **Shared Spaces** — `GET` spaces; `POST` create; **members** — add/remove; enforce errors for unauthorized
-- [ ] **Multimodal** — `GET` assets + ingest status; optional `POST` upload + poll status
-- [ ] **Durability** — `GET` tier usage, RS/replication health, repair queue — bind to progress UI
+- [x] **Provenance** — `GET`/`POST` time-travel (`as_of_timestamp`, `version_id`, `diff_since`) — bind to form + diff panel
+- [x] **Shared Spaces** — `GET` spaces; `POST` create; **members** — add/remove; enforce errors for unauthorized
+- [x] **Multimodal** — `GET` assets + ingest status; optional `POST` upload + poll status
+- [x] **Durability** — `GET` tier usage, RS/replication health, repair queue — bind to progress UI
 - [ ] **Network Quality** — `GET` miner/validator leaderboard + challenge stats — bind to table
-- [ ] **API & MCP** — `GET` keys / `POST` roll key; `GET` usage stats — replace placeholders
+- [x] **API & MCP** — Mongo-backed keys (`/api/auth/api-keys`), Bearer on `/api/gateway/*`, dashboard UI; MCP stdio `--bff-url` + `--api-key`
+- [x] **API usage stats** — per-key request counts / quotas (dashboard placeholders)
 - [ ] **Billing** — `GET` plan + usage; Stripe/customer portal link if applicable
 - [ ] **Settings** — `GET`/`PATCH` workspace + notification prefs — wire forms (remove `disabled` where done)
 

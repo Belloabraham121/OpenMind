@@ -16,10 +16,21 @@ type WorkflowRow = {
   updatedAt: string
 }
 
+type WorkflowDetail = {
+  id: string
+  externalId: string
+  label: string
+  lastStep: number
+  createdAt: string
+  updatedAt: string
+}
+
 export function WorkflowsClient() {
   const [rows, setRows] = useState<WorkflowRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [detailFor, setDetailFor] = useState<string | null>(null)
+  const [detail, setDetail] = useState<WorkflowDetail | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -31,6 +42,20 @@ export function WorkflowsClient() {
   useEffect(() => {
     void load()
   }, [load])
+
+  async function loadDetail(externalId: string) {
+    if (detailFor === externalId) {
+      setDetailFor(null)
+      setDetail(null)
+      return
+    }
+    setDetailFor(externalId)
+    setDetail(null)
+    const { ok, data } = await apiJson<{ workflow: WorkflowDetail }>(
+      `/api/dashboard/workflows/${encodeURIComponent(externalId)}`,
+    )
+    if (ok && data.workflow) setDetail(data.workflow)
+  }
 
   async function resume(externalId: string) {
     setBusy(externalId)
@@ -94,6 +119,14 @@ export function WorkflowsClient() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
+                    variant="outline"
+                    className="rounded-full border-foreground/15"
+                    onClick={() => void loadDetail(w.externalId)}
+                  >
+                    {detailFor === w.externalId ? "Hide detail" : "Detail"}
+                  </Button>
+                  <Button
+                    size="sm"
                     className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                     disabled={busy === w.externalId}
                     onClick={() => void resume(w.externalId)}
@@ -109,6 +142,13 @@ export function WorkflowsClient() {
                   </Button>
                 </div>
               </CardHeader>
+              {detailFor === w.externalId && detail && (
+                <CardContent className="border-t border-border/60 pt-4 font-mono text-xs text-muted-foreground">
+                  <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3">
+                    {JSON.stringify(detail, null, 2)}
+                  </pre>
+                </CardContent>
+              )}
             </Card>
           ))}
         </div>

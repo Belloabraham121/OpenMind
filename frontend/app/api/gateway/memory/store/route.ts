@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server"
 import { recordActivity } from "@/lib/record-activity"
 import { forwardSubnetJson } from "@/lib/gateway-proxy"
-import { getSessionUser } from "@/lib/require-session"
+import { getGatewayAuth, gatewayUnauthorized } from "@/lib/gateway-auth"
 import { subnetSessionIdForUser } from "@/lib/subnet-session"
+import { MAX_ACTIVITY_STORED_CONTENT } from "@/lib/memory-ingest-limits"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
-  const session = await getSessionUser()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const auth = await getGatewayAuth(request)
+  if (auth instanceof NextResponse) return auth
+  if (!auth) {
+    return gatewayUnauthorized(request)
   }
 
   let body: Record<string, unknown> = {}
@@ -19,10 +21,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const userId = String(session.user._id)
+  const userId = String(auth.userId)
   const content = typeof body.content === "string" ? body.content : ""
   if (!content.trim()) {
     return NextResponse.json({ error: "content is required." }, { status: 400 })
+  }
+
+  const cursorGenerationId =
+    typeof body.cursor_generation_id === "string" ? body.cursor_generation_id.trim() : ""
+  const cursorConversationId =
+    typeof body.cursor_conversation_id === "string" ? body.cursor_conversation_id.trim() : ""
+
+  const rawAuth =
+    typeof body.auth_metadata === "object" &&
+    body.auth_metadata !== null &&
+    !Array.isArray(body.auth_metadata)
+      ? { ...(body.auth_metadata as Record<string, unknown>) }
+      : {}
+
+  if (cursorGenerationId) {
+    rawAuth.cursor_generation_id = cursorGenerationId
+  }
+  if (cursorConversationId) {
+    rawAuth.cursor_conversation_id = cursorConversationId
   }
 
   const payload = {
@@ -36,8 +57,7 @@ export async function POST(request: Request) {
     filters: typeof body.filters === "object" && body.filters !== null ? body.filters : {},
     shared_space_id: typeof body.shared_space_id === "string" ? body.shared_space_id : undefined,
     author: typeof body.author === "string" ? body.author : undefined,
-    auth_metadata:
-      typeof body.auth_metadata === "object" && body.auth_metadata !== null ? body.auth_metadata : {},
+    auth_metadata: rawAuth,
   }
 
   const t0 = Date.now()
@@ -48,11 +68,23 @@ export async function POST(request: Request) {
   const latencyMs = Date.now() - t0
 
   const preview = content.slice(0, 120)
+  const truncated = content.length > MAX_ACTIVITY_STORED_CONTENT
   await recordActivity({
-    userId: session.user._id,
+    userId: auth.userId,
     kind: "ingest",
     summary: preview + (content.length > 120 ? "…" : ""),
-    metadata: { ok: out.ok, latencyMs, gatewayStatus: out.status },
+    metadata: {
+      ok: out.ok,
+      latencyMs,
+      gatewayStatus: out.status,
+      sessionId: payload.session_id,
+      role: payload.role,
+      storedContent: content.slice(0, MAX_ACTIVITY_STORED_CONTENT),
+      contentLength: content.length,
+      contentTruncated: truncated,
+      ...(cursorGenerationId ? { cursorGenerationId } : {}),
+      ...(cursorConversationId ? { cursorConversationId } : {}),
+    },
   })
 
   return NextResponse.json(out.data, { status: out.ok ? 200 : out.status })

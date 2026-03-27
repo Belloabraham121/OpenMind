@@ -2,14 +2,15 @@ import { NextResponse } from "next/server"
 import { recordActivity } from "@/lib/record-activity"
 import { forwardSubnetJson } from "@/lib/gateway-proxy"
 import { dashboardCollections } from "@/lib/dashboard-db"
-import { getSessionUser } from "@/lib/require-session"
+import { getGatewayAuth, gatewayUnauthorized } from "@/lib/gateway-auth"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
-  const session = await getSessionUser()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const auth = await getGatewayAuth(request)
+  if (auth instanceof NextResponse) return auth
+  if (!auth) {
+    return gatewayUnauthorized(request)
   }
 
   let body: Record<string, unknown> = {}
@@ -38,11 +39,11 @@ export async function POST(request: Request) {
   const now = new Date()
   const { workflows } = await dashboardCollections()
   await workflows.updateOne(
-    { userId: session.user._id, externalId: workflow_id },
+    { userId: auth.userId, externalId: workflow_id },
     {
       $set: { lastStep: step, updatedAt: now, label: workflow_id },
       $setOnInsert: {
-        userId: session.user._id,
+        userId: auth.userId,
         externalId: workflow_id,
         createdAt: now,
       },
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
   )
 
   await recordActivity({
-    userId: session.user._id,
+    userId: auth.userId,
     kind: "checkpoint",
     summary: `checkpoint save · ${workflow_id} step ${step}`,
     metadata: { ok: out.ok, latencyMs, workflow_id, step },

@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb"
 import { ensureAuthIndexes } from "@/lib/auth-db"
 import { dashboardCollections, ensureDashboardForUser, updateWorkspaceName } from "@/lib/dashboard-db"
 import { getSessionUser } from "@/lib/require-session"
+import { subnetSessionIdForUser } from "@/lib/subnet-session"
 
 export const runtime = "nodejs"
 
@@ -32,9 +33,12 @@ export async function GET() {
   const { workspaces: wsCol } = await dashboardCollections()
   const list = await wsCol.find({ userId: session.user._id }).sort({ createdAt: 1 }).toArray()
 
+  const userId = String(session.user._id)
   return NextResponse.json({
+    /** Subnet memory namespace for this user when no custom session_id is passed (API + MCP default). */
+    defaultMemorySessionId: subnetSessionIdForUser(userId),
     user: {
-      id: String(session.user._id),
+      id: userId,
       email: session.user.email ?? null,
       phone: session.user.phone ?? null,
       emailVerified: session.user.emailVerified,

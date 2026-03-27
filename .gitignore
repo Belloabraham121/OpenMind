@@ -1,5 +1,6 @@
 bittensor-subnet-template/
-.cursor/
+# Cursor hook secrets (hooks.json stays tracked)
+.cursor/openmind-hook.env
 .DS_Store
 .vscode/
 LongMemEval/

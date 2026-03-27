@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "node ./scripts/openmind-before-submit-prompt.mjs",
+        "timeout": 30
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "node ./scripts/openmind-session-start.mjs",
+        "timeout": 20
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "node ./scripts/openmind-session-end.mjs",
+        "timeout": 60
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "node ./scripts/openmind-after-agent-response.mjs",
+        "timeout": 45
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node ./scripts/openmind-after-file-edit.mjs",
+        "timeout": 60
+      }
+    ]
+  }
+}
+

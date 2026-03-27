@@ -1,4 +1,4 @@
-import type { ObjectId } from "mongodb"
+import { MongoServerError, type ObjectId } from "mongodb"
 import { getDb } from "@/lib/mongo"
 
 export type WorkspaceDoc = {
@@ -66,6 +66,7 @@ export async function ensureDashboardIndexes() {
     workspaces.createIndex({ userId: 1 }),
     workspaces.createIndex({ userId: 1, slug: 1 }, { unique: true }),
     activity.createIndex({ userId: 1, createdAt: -1 }),
+    activity.createIndex({ userId: 1, kind: 1, createdAt: -1 }),
     activity.createIndex({ createdAt: -1 }),
     stats.createIndex({ userId: 1 }, { unique: true }),
     workflows.createIndex({ userId: 1, updatedAt: -1 }),
@@ -95,25 +96,46 @@ export async function ensureDashboardForUser(userId: ObjectId) {
   let ws = await workspaces.findOne({ userId })
   if (!ws) {
     const slug = `default-${userId.toHexString().slice(-8)}`
-    const res = await workspaces.insertOne({
-      userId,
-      name: "Default workspace",
-      slug,
-      createdAt: now,
-      updatedAt: now,
-    })
-    ws = { _id: res.insertedId, userId, name: "Default workspace", slug, createdAt: now, updatedAt: now }
+    try {
+      const res = await workspaces.insertOne({
+        userId,
+        name: "Default workspace",
+        slug,
+        createdAt: now,
+        updatedAt: now,
+      })
+      ws = { _id: res.insertedId, userId, name: "Default workspace", slug, createdAt: now, updatedAt: now }
+    } catch (e) {
+      if (e instanceof MongoServerError && e.code === 11000) {
+        ws = await workspaces.findOne({ userId })
+      } else {
+        throw e
+      }
+    }
+  }
+  if (!ws) {
+    ws = await workspaces.findOne({ userId })
   }
 
   const st = await stats.findOne({ userId })
   if (!st) {
-    await stats.insertOne({
-      userId,
-      storedChunks: 0,
-      p95RetrievalMs: 0,
-      successRate: 0.94,
-      updatedAt: now,
-    })
+    try {
+      await stats.insertOne({
+        userId,
+        storedChunks: 0,
+        p95RetrievalMs: 0,
+        successRate: 0.94,
+        updatedAt: now,
+      })
+    } catch (e) {
+      if (!(e instanceof MongoServerError && e.code === 11000)) {
+        throw e
+      }
+    }
+  }
+
+  if (!ws) {
+    throw new Error("Could not ensure default workspace.")
   }
 
   return { workspace: ws }

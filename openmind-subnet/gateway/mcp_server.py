@@ -5,17 +5,31 @@ This wraps the REST gateway so any MCP-compatible AI agent (Claude Desktop,
 Cursor, LangGraph, etc.) can connect with a single endpoint and gain access
 to OpenMind's decentralised memory layer.
 
-Usage (stdio transport — default for Claude Desktop / Cursor):
+**Direct validator** (local dev when Next.js is not used):
 
     python -m gateway.mcp_server --api-url http://localhost:8090
 
-Add to your MCP client config (e.g. Claude Desktop):
+**Next.js BFF** (recommended): HTTP calls go to the web app with
+``Authorization: Bearer om_live_…``; the app proxies to ``SUBNET_GATEWAY_URL``.
+
+    python -m gateway.mcp_server --bff-url http://localhost:3000 --api-key om_live_...
+
+    # Or: export OPENMIND_API_KEY=om_live_...
+
+Claude Desktop config example (BFF mode):
 
     {
       "mcpServers": {
         "openmind": {
           "command": "python",
-          "args": ["-m", "gateway.mcp_server", "--api-url", "http://localhost:8090"]
+          "args": [
+            "-m",
+            "gateway.mcp_server",
+            "--bff-url",
+            "http://localhost:3000",
+            "--api-key",
+            "<paste from dashboard API & MCP>"
+          ]
         }
       }
     }
@@ -23,6 +37,7 @@ Add to your MCP client config (e.g. Claude Desktop):
 
 import argparse
 import json
+import os
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -30,23 +45,61 @@ from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("OpenMind")
 
+# Validator OpenAPI paths -> Next.js ``/api/gateway/*`` paths (must stay in sync with the app).
+_GATEWAY_TO_BFF: Dict[str, str] = {
+    "/v1/memory/store": "/api/gateway/memory/store",
+    "/v1/memory/query": "/api/gateway/memory/query",
+    "/v1/memory/compact": "/api/gateway/memory/compact",
+    "/v1/memory/version": "/api/gateway/memory/version",
+    "/v1/checkpoint/save": "/api/gateway/checkpoint/save",
+    "/v1/checkpoint/resume": "/api/gateway/checkpoint/resume",
+    "/v1/space/query": "/api/gateway/space/query",
+    "/v1/health": "/api/gateway/health",
+}
+
+_bff_url: Optional[str] = None
+_api_key: Optional[str] = None
 _api_url: str = "http://localhost:8090"
 
 
-def _url(path: str) -> str:
-    return f"{_api_url}{path}"
+def _resolved_path(gateway_path: str) -> str:
+    if _bff_url:
+        mapped = _GATEWAY_TO_BFF.get(gateway_path)
+        if not mapped:
+            raise ValueError(
+                f"No BFF route mapped for {gateway_path!r}. "
+                "Use --api-url for direct validator access."
+            )
+        return mapped
+    return gateway_path
+
+
+def _base_url() -> str:
+    if _bff_url:
+        return _bff_url.rstrip("/")
+    return _api_url.rstrip("/")
+
+
+def _http_headers() -> Dict[str, str]:
+    if _api_key:
+        return {"Authorization": f"Bearer {_api_key}"}
+    return {}
+
+
+def _full_url(gateway_path: str) -> str:
+    return f"{_base_url()}{_resolved_path(gateway_path)}"
 
 
 async def _post(path: str, payload: dict) -> dict:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(_url(path), json=payload)
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(_full_url(path), json=payload, headers=_http_headers())
         resp.raise_for_status()
         return resp.json()
 
 
 async def _get(path: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(_url(path))
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(_full_url(path), headers=_http_headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -57,8 +110,8 @@ async def _get(path: str) -> dict:
 
 @mcp.tool()
 async def openmind_store(
-    session_id: str,
     content: str,
+    session_id: Optional[str] = None,
     role: str = "user",
     tier: str = "basic",
     event_at: Optional[str] = None,
@@ -70,28 +123,36 @@ async def openmind_store(
     and builds relationship graphs between facts.
 
     Args:
-        session_id: Unique session identifier (scopes the memory).
+        session_id: Namespace for this memory (must match Memory Explorer).
+            If omitted, and you are running in **Next.js BFF mode** (``--bff-url``), the app will
+            derive the correct namespace from your authenticated API key.
+            In **direct validator mode** (no ``--bff-url``), ``session_id`` is required.
         content: The text content to store.
         role: Who produced the content — "user", "assistant", or "system".
         tier: Durability tier — "basic" (replicated) or "premium" (Reed-Solomon).
         event_at: ISO-8601 timestamp of when the described event occurred (optional).
         multimodal_type: Optional — "text", "image", or "pdf".
     """
-    result = await _post("/v1/memory/store", {
-        "session_id": session_id,
+    payload: dict = {
         "content": content,
         "role": role,
         "tier": tier,
         "event_at": event_at,
         "multimodal_type": multimodal_type,
-    })
+    }
+    if session_id:
+        payload["session_id"] = session_id
+    elif not _bff_url:
+        raise ValueError("session_id is required in direct validator mode; use --bff-url or pass session_id.")
+
+    result = await _post("/v1/memory/store", payload)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool()
 async def openmind_query(
-    session_id: str,
     query: str,
+    session_id: Optional[str] = None,
     top_k: int = 10,
     smart: bool = True,
     tier: str = "basic",
@@ -102,19 +163,27 @@ async def openmind_query(
     then loads source episodes and the session anchor for maximum token reduction.
 
     Args:
-        session_id: Session to search within.
+        session_id: Same namespace as ``openmind_store``.
+            If omitted, and you are running in **Next.js BFF mode** (``--bff-url``), the app will
+            derive the correct namespace from your authenticated API key.
+            In **direct validator mode** (no ``--bff-url``), ``session_id`` is required.
         query: Natural language search query.
         top_k: Maximum number of results to return.
         smart: Use two-phase retrieval (default True). Set False for legacy mode.
         tier: Durability tier — "basic" or "premium".
     """
-    result = await _post("/v1/memory/query", {
-        "session_id": session_id,
+    payload: dict = {
         "query": query,
         "top_k": top_k,
         "smart": smart,
         "tier": tier,
-    })
+    }
+    if session_id:
+        payload["session_id"] = session_id
+    elif not _bff_url:
+        raise ValueError("session_id is required in direct validator mode; use --bff-url or pass session_id.")
+
+    result = await _post("/v1/memory/query", payload)
     return json.dumps(result, indent=2)
 
 
@@ -243,20 +312,59 @@ async def health_resource() -> str:
     return json.dumps(result, indent=2)
 
 
+@mcp.resource("openmind://context")
+async def context_resource() -> str:
+    """
+    A pre-formatted context prompt for clients that support automatic prompt injection.
+
+    Intended to behave like "always-on memory": the model should search for relevant
+    memories before answering and should save important user/agent facts at the end.
+    """
+    return (
+        "You have access to OpenMind memory via MCP tools.\n\n"
+        "- Before answering, call `openmind_query` with the user's intent to retrieve relevant memories.\n"
+        "- Use the retrieved memory results to ground your response.\n"
+        "- After the user request is completed, call `openmind_store` to save any durable facts,\n"
+        "  decisions, preferences, and new context revealed in this conversation.\n"
+        "- If a `session_id` is not provided, rely on BFF mode (when available) to derive the session namespace.\n"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
 def main():
-    global _api_url
+    global _api_url, _bff_url, _api_key
     parser = argparse.ArgumentParser(description="OpenMind MCP server")
     parser.add_argument(
         "--api-url",
         default="http://localhost:8090",
-        help="Base URL of the OpenMind REST gateway.",
+        help="Base URL of the validator REST gateway (direct mode; default when --bff-url is unset).",
+    )
+    parser.add_argument(
+        "--bff-url",
+        default="",
+        help="Next.js origin (e.g. http://localhost:3000). Uses /api/gateway/* with Bearer auth. "
+        "If omitted, OPENMIND_BFF_URL env is used.",
+    )
+    parser.add_argument(
+        "--api-key",
+        default="",
+        help="om_live_… API key for BFF mode. Falls back to OPENMIND_API_KEY env var.",
     )
     args = parser.parse_args()
     _api_url = args.api_url.rstrip("/")
+    bff = (args.bff_url or os.environ.get("OPENMIND_BFF_URL", "") or "").strip()
+    if bff:
+        _bff_url = bff.rstrip("/")
+    key = (args.api_key or os.environ.get("OPENMIND_API_KEY", "")).strip()
+    if bff and not key:
+        parser.error(
+            "BFF mode requires OPENMIND_API_KEY (or --api-key). "
+            "Set BFF via --bff-url or OPENMIND_BFF_URL."
+        )
+    _api_key = key or None
     mcp.run()
 
 

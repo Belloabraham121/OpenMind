@@ -10,10 +10,14 @@ import {
 } from "@/components/ui/card"
 import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api-client"
 import type { ActivityItem, OverviewMetric, OverviewResponse } from "@/lib/types/dashboard"
+
+const METRIC_SKELETON_COUNT = 4
+const ACTIVITY_SKELETON_ROWS = 6
 
 export function DashboardOverviewClient() {
   const [metrics, setMetrics] = useState<OverviewMetric[] | null>(null)
@@ -22,25 +26,31 @@ export function DashboardOverviewClient() {
   const [actLoading, setActLoading] = useState(true)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [overviewError, setOverviewError] = useState<string | null>(null)
+  const [overviewLoading, setOverviewLoading] = useState(true)
 
   const loadOverview = useCallback(async () => {
     setOverviewError(null)
-    const res = await apiFetch("/api/dashboard/overview")
-    if (!res.ok) {
-      setOverviewError("Could not load overview.")
-      setMetrics(null)
-      return
-    }
-    const data = (await res.json()) as OverviewResponse
-    setMetrics(data.metrics)
-    if (data.gateway.configured) {
-      setGatewayHint(
-        data.gateway.reachable
-          ? `Gateway: ${data.gateway.status ?? "reachable"}`
-          : "Gateway URL set but not reachable.",
-      )
-    } else {
-      setGatewayHint("Set SUBNET_GATEWAY_URL to connect the validator API.")
+    setOverviewLoading(true)
+    try {
+      const res = await apiFetch("/api/dashboard/overview")
+      if (!res.ok) {
+        setOverviewError("Could not load overview.")
+        setMetrics(null)
+        return
+      }
+      const data = (await res.json()) as OverviewResponse
+      setMetrics(data.metrics)
+      if (data.gateway.configured) {
+        setGatewayHint(
+          data.gateway.reachable
+            ? `Gateway: ${data.gateway.status ?? "reachable"}`
+            : "Gateway URL set but not reachable.",
+        )
+      } else {
+        setGatewayHint("Set SUBNET_GATEWAY_URL to connect the validator API.")
+      }
+    } finally {
+      setOverviewLoading(false)
     }
   }, [])
 
@@ -84,24 +94,30 @@ export function DashboardOverviewClient() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {!metrics ? (
-          <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading metrics…
-          </div>
-        ) : (
-          metrics.map((k) => (
-            <Card key={k.label} className="border-foreground/10 shadow-none">
-              <CardHeader className="pb-2">
-                <CardDescription className="font-mono text-xs uppercase tracking-wide">
-                  {k.label}
-                </CardDescription>
-                <CardTitle className="font-display text-3xl tabular-nums">{k.value}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{k.hint}</CardContent>
-            </Card>
-          ))
-        )}
+        {overviewLoading
+          ? Array.from({ length: METRIC_SKELETON_COUNT }).map((_, i) => (
+              <Card key={`metric-skel-${i}`} className="border-foreground/10 shadow-none">
+                <CardHeader className="pb-2">
+                  <Skeleton className="mb-3 h-3 w-24" />
+                  <Skeleton className="h-9 w-16 max-w-24" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-4/5" />
+                </CardContent>
+              </Card>
+            ))
+          : metrics?.map((k) => (
+              <Card key={k.label} className="border-foreground/10 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardDescription className="font-mono text-xs uppercase tracking-wide">
+                    {k.label}
+                  </CardDescription>
+                  <CardTitle className="font-display text-3xl tabular-nums">{k.value}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">{k.hint}</CardContent>
+              </Card>
+            ))}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
@@ -112,10 +128,17 @@ export function DashboardOverviewClient() {
           </CardHeader>
           <CardContent>
             {actLoading && activity.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading…
-              </div>
+              <ul className="space-y-3 font-mono text-sm" aria-busy="true" aria-label="Loading activity">
+                {Array.from({ length: ACTIVITY_SKELETON_ROWS }).map((_, i) => (
+                  <li
+                    key={`act-skel-${i}`}
+                    className="border-b border-border/60 pb-3 last:border-0 last:pb-0"
+                  >
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="mt-2 h-4 w-[92%]" />
+                  </li>
+                ))}
+              </ul>
             ) : activity.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No events yet. Run a memory search or sign in again to populate this feed.

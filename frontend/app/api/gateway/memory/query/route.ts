@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server"
 import { recordActivity } from "@/lib/record-activity"
 import { forwardSubnetJson } from "@/lib/gateway-proxy"
-import { getSessionUser } from "@/lib/require-session"
+import { getGatewayAuth, gatewayUnauthorized } from "@/lib/gateway-auth"
 import { subnetSessionIdForUser } from "@/lib/subnet-session"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
-  const session = await getSessionUser()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const auth = await getGatewayAuth(request)
+  if (auth instanceof NextResponse) return auth
+  if (!auth) {
+    return gatewayUnauthorized(request)
   }
 
   let body: Record<string, unknown> = {}
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const userId = String(session.user._id)
+  const userId = String(auth.userId)
   const payload = {
     session_id: typeof body.session_id === "string" ? body.session_id : subnetSessionIdForUser(userId),
     query: typeof body.query === "string" ? body.query : "",
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
   const latencyMs = Date.now() - t0
 
   await recordActivity({
-    userId: session.user._id,
+    userId: auth.userId,
     kind: "query",
     summary:
       typeof payload.query === "string" && payload.query.length > 0

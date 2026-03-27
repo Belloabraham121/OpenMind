@@ -1,0 +1,28 @@
+---
+description: Use OpenMind memory proactively in every conversation.
+alwaysApply: true
+---
+
+When OpenMind MCP tools are available, use memory in a proactive loop:
+
+1) Recall first:
+- Before finalizing an answer, call `openmind_query` with a focused query about the user's current intent.
+- If in Next.js BFF mode, `session_id` may be omitted so the app derives the correct namespace from the authenticated API key.
+
+2) Ground the answer:
+- Use retrieved memories only when relevant and non-contradictory with the latest user message.
+- If memory conflicts with new user input, prefer the latest explicit user instruction.
+
+3) Save durable outcomes:
+- With the OpenMind Cursor plugin installed, **each assistant reply is auto-ingested** via the
+  `afterAgentResponse` hook (full message text, redacted), and **agent file edits** via
+  `afterFileEdit` (path + patch hunks, noise paths skipped). You do **not** need to duplicate the
+  entire answer in `openmind_store` unless the user explicitly asks to persist it.
+- Optionally still call `openmind_store` for **short, structured** durable facts when useful:
+  - preferences, decisions, confirmed constraints, identifiers that matter next session
+- Never store raw secrets (API keys, passwords, tokens, credentials).
+
+4) Keep memory quality high:
+- Store concise, non-redundant updates.
+- Do not spam memory for trivial or ephemeral details.
+
