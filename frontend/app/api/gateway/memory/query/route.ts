@@ -27,7 +27,6 @@ export async function POST(request: Request) {
     top_k: typeof body.top_k === "number" ? body.top_k : 10,
     smart: body.smart !== false,
     filters: typeof body.filters === "object" && body.filters !== null ? body.filters : {},
-    tier: typeof body.tier === "string" ? body.tier : "basic",
     embedding: Array.isArray(body.embedding) ? body.embedding : undefined,
     multimodal_type: typeof body.multimodal_type === "string" ? body.multimodal_type : undefined,
   }

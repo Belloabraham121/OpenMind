@@ -510,7 +510,6 @@ function renderMemoryItem(r) {
   const metaParts = [];
   if (id) metaParts.push(id.slice(0, 8) + "…");
   if (ts) metaParts.push(ts);
-  if (md.tier) metaParts.push("tier: " + md.tier);
   if (md.confidence) metaParts.push("conf: " + (md.confidence * 100).toFixed(0) + "%");
   if (md.source_episode_id) metaParts.push("src: " + md.source_episode_id.slice(0, 8) + "…");
   if (metaParts.length) {

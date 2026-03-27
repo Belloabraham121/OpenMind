@@ -99,13 +99,13 @@ const FALLBACK_MODES: NetworkChallengeMode[] = [
     id: 3,
     key: "extraction",
     label: "Reconstruction (extraction)",
-    description: "Fact extraction count and quality vs synthetic prompts.",
+    description: "Fact extraction quality in retrieval responses over memory miners have already ingested.",
   },
   {
     id: 4,
     key: "temporal",
     label: "Temporal accuracy",
-    description: "Time-aware extraction alignment on dated content.",
+    description: "Whether returned chunks preserve temporal / stored-episode signals from real user traffic.",
   },
 ]
 

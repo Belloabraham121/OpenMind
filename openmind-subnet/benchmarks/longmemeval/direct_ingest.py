@@ -126,7 +126,6 @@ def direct_ingest(
                     "timestamp": ts,
                     "recorded_at": ts,
                     "event_at": None,
-                    "tier": "basic",
                     "multimodal_type": None,
                 },
             )

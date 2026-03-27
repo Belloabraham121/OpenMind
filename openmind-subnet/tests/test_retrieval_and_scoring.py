@@ -18,7 +18,6 @@ def test_vector_retrieval_orders_by_similarity():
         embedding=[0.9, 0.1],
         top_k=2,
         filters={},
-        tier="basic",
     )
 
     assert len(results) == 2

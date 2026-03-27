@@ -8,6 +8,7 @@ Concrete implementation of a Bittensor validator that queries miners using the
 import asyncio
 import copy
 import os
+import random
 import threading
 import time
 from typing import Any, Dict, List, Mapping, Tuple
@@ -131,10 +132,9 @@ class Validator:
         if not self._known_chunk_ids:
             probes: List[str] = []
         else:
-            # Sample up to 5 unique IDs from the pool.
             unique_ids = list(dict.fromkeys(self._known_chunk_ids))
             k = min(5, len(unique_ids))
-            probes = unique_ids[:k]
+            probes = random.sample(unique_ids, k=k) if k else []
 
         self._retrieval_probes[challenge_id] = probes
         return challenge_id, probes
@@ -162,32 +162,6 @@ class Validator:
 
         hits = len(set(probes) & returned_ids)
         return float(hits) / float(len(probes)) if probes else 0.0
-
-    # Synthetic challenge data for extraction and temporal accuracy scoring.
-    _EXTRACTION_CHALLENGES = [
-        {
-            "content": "The Q1 budget was set to $50,000 during yesterday's planning meeting with Alice from Marketing.",
-            "expected_subjects": ["q1", "budget", "alice"],
-            "expected_temporal": True,
-        },
-        {
-            "content": "Bob approved the new server migration plan last Tuesday. The deadline is March 15th.",
-            "expected_subjects": ["bob", "server migration plan", "deadline"],
-            "expected_temporal": True,
-        },
-        {
-            "content": "Revenue increased by 15% compared to last quarter according to the CFO's report.",
-            "expected_subjects": ["revenue"],
-            "expected_temporal": True,
-        },
-    ]
-
-    _TEMPORAL_CHALLENGES = [
-        {"content": "The meeting happened yesterday afternoon", "has_temporal": True},
-        {"content": "We discussed Q1 results on March 5th, 2026", "has_temporal": True},
-        {"content": "Hello, how are you today?", "has_temporal": True},
-        {"content": "The project uses Python and FastAPI", "has_temporal": False},
-    ]
 
     def _metrics_from_responses(
         self,
@@ -236,7 +210,7 @@ class Validator:
                 if checkpoint_ok is not None:
                     metrics["checkpoint_ok"] = bool(checkpoint_ok)
 
-            # Mode 3: extraction quality challenge
+            # Mode 3: reconstruction / extraction quality (from retrieval responses)
             if mode == 3:
                 results = getattr(resp, "results", None)
                 if results is None and isinstance(resp, Mapping):
@@ -250,7 +224,7 @@ class Validator:
                                 metrics["extraction_quality"] = min(1.0, int(fc) / 3.0)
                                 metrics["storage_ok"] = True
 
-            # Mode 4: temporal accuracy challenge
+            # Mode 4: temporal signal quality (from retrieval responses)
             if mode == 4:
                 results = getattr(resp, "results", None)
                 if results is None and isinstance(resp, Mapping):
@@ -265,31 +239,16 @@ class Validator:
 
         return metrics_list
 
-    def _build_extraction_challenge(self) -> OpenMindRequest:
-        """Build a synthetic store request to test extraction quality."""
-        idx = int(self.step) % len(self._EXTRACTION_CHALLENGES)
-        challenge = self._EXTRACTION_CHALLENGES[idx]
-        return OpenMindRequest(
-            session_id=f"validator-extraction-{self.wallet.hotkey.ss58_address}",
-            query=challenge["content"],
-            filters={"_action": "store", "_role": "user"},
-        )
-
-    def _build_temporal_challenge(self) -> OpenMindRequest:
-        """Build a synthetic store request to test temporal extraction."""
-        idx = int(self.step) % len(self._TEMPORAL_CHALLENGES)
-        challenge = self._TEMPORAL_CHALLENGES[idx]
-        return OpenMindRequest(
-            session_id=f"validator-temporal-{self.wallet.hotkey.ss58_address}",
-            query=challenge["content"],
-            filters={"_action": "store", "_role": "user"},
-        )
-
     async def forward(self):
         """
-        Validator forward pass with 5 challenge modes:
-        0: retrieval, 1: storage/durability, 2: versioning/checkpoint,
-        3: extraction quality, 4: temporal accuracy.
+        Validator forward pass with 5 challenge modes (same PRD-style query to miners;
+        scoring differs per mode). All modes issue retrieval-style synapses — no synthetic
+        store payloads. Mode 0 uses chunk-id probes from ``_known_chunk_ids`` (possession /
+        recall on data miners have already returned). Modes 1–4 reuse the same request shape;
+        miners are judged on non-empty results, version fields, fact_count, etc.
+
+        This aligns with the PRD's random / probe-based challenges that verify miners still
+        surface memory that has flowed through the subnet rather than canned benchmark text.
         """
         mode = int(self.step) % 5
 
@@ -307,17 +266,12 @@ class Validator:
             f"Validator step={self.step} mode={mode} querying {len(miner_uids)} miners."
         )
 
-        if mode == 3:
-            synapse = self._build_extraction_challenge()
-        elif mode == 4:
-            synapse = self._build_temporal_challenge()
-        else:
-            synapse = OpenMindRequest(
-                session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
-                query=f"step-{self.step}",
-                top_k=10,
-                filters={"challenge_mode": mode},
-            )
+        synapse = OpenMindRequest(
+            session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
+            query=f"step-{self.step}",
+            top_k=10,
+            filters={"challenge_mode": mode},
+        )
 
         start = time.time()
         axons = self._patch_axons([self.metagraph.axons[uid] for uid in miner_uids])

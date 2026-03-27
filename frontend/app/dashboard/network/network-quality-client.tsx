@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,9 +16,12 @@ import {
 import { apiJson } from "@/lib/api-client"
 import type { NetworkChallengeMode, NetworkQualityResponse } from "@/lib/types/dashboard"
 import { cn } from "@/lib/utils"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Loader2, Radio, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+
+/** Matches validator main-loop sleep (~12s); poll often enough to catch step changes quickly. */
+const POLL_MS = 4000
 
 /** Mirrors ``ALPHA_*`` weights in openmind-subnet/openmind/scoring.py (Σ = 15). */
 const EMISSION_PILLARS = [
@@ -89,16 +92,42 @@ function ChallengeCard({ mode, active }: { mode: NetworkChallengeMode; active: b
 export function NetworkQualityClient() {
   const [data, setData] = useState<NetworkQualityResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const loadSeq = useRef(0)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    const seq = ++loadSeq.current
+    if (silent) setRefreshing(true)
+    else setLoading(true)
     const { ok, data: d } = await apiJson<NetworkQualityResponse>("/api/dashboard/network-quality")
-    if (ok && d) setData(d)
+    if (seq !== loadSeq.current) return
+    if (ok && d) {
+      setData(d)
+      setLastUpdated(new Date())
+    }
     setLoading(false)
+    setRefreshing(false)
   }, [])
 
   useEffect(() => {
-    void load()
+    void load(false)
+  }, [load])
+
+  useEffect(() => {
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return
+      void load(true)
+    }
+    const id = window.setInterval(tick, POLL_MS)
+    const onVis = () => {
+      if (document.visibilityState === "visible") void load(true)
+    }
+    document.addEventListener("visibilitychange", onVis)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener("visibilitychange", onVis)
+    }
   }, [load])
 
   const showAxisColumns = data?.source === "demo" || data?.miners.some((m) => m.retrieval !== null)
@@ -136,8 +165,14 @@ export function NetworkQualityClient() {
                 </span>
               ) : null}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-              <RefreshCw className="mr-1.5 size-3.5" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              onClick={() => void load(true)}
+            >
+              <RefreshCw className={cn("mr-1.5 size-3.5", refreshing && "animate-spin")} />
               Refresh
             </Button>
           </div>
@@ -171,7 +206,21 @@ export function NetworkQualityClient() {
 
             <Card className="border-foreground/10 shadow-none">
               <CardHeader>
-                <CardTitle className="font-display text-xl">Validator focus</CardTitle>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <CardTitle className="font-display text-xl">Validator focus</CardTitle>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Radio
+                      className={cn("size-3.5 text-primary", refreshing && "animate-pulse")}
+                      aria-hidden
+                    />
+                    <span className="font-mono">Live · ~{Math.round(POLL_MS / 1000)}s</span>
+                    {lastUpdated ? (
+                      <span className="tabular-nums text-[10px] opacity-80">
+                        · {lastUpdated.toLocaleTimeString()}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
                 <CardDescription>
                   Challenges rotate each forward step (mode = step mod 5). Miners are sampled from the
                   metagraph and scored into an exponential moving average.
@@ -179,9 +228,16 @@ export function NetworkQualityClient() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {data.currentChallenge ? (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-                    <div className="text-xs font-medium uppercase tracking-wide text-primary">
-                      This step
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm transition-colors duration-300">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-medium uppercase tracking-wide text-primary">
+                        This step
+                      </div>
+                      {data.validatorStep !== null ? (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          step {data.validatorStep} → mode {data.currentChallenge.id}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-0.5 font-display text-lg">{data.currentChallenge.label}</div>
                     <p className="mt-1 text-xs text-muted-foreground">

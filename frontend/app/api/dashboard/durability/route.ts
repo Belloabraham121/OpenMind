@@ -22,8 +22,7 @@ export async function GET() {
   ])
 
   const chunks = st?.storedChunks ?? 0
-  const basicCoverage = chunks > 0 ? Math.min(99, 70 + Math.round(Math.log10(chunks + 1) * 8)) : 72
-  const rsCoverage = chunks > 0 ? Math.min(95, 55 + Math.round(Math.log10(chunks + 1) * 10)) : 58
+  const coveragePercent = chunks > 0 ? Math.min(99, 70 + Math.round(Math.log10(chunks + 1) * 8)) : 72
 
   let gatewayOk: boolean | null = null
   if (getSubnetGatewayBaseUrl()) {
@@ -32,22 +31,12 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    tiers: [
-      {
-        id: "basic",
-        label: "Basic tier",
-        description: "3–5 full copies · lower latency",
-        coveragePercent: basicCoverage,
-        meta: `${ingestWeek} ingest events (7d)`,
-      },
-      {
-        id: "premium",
-        label: "Premium RS(10,4)",
-        description: "Tolerates parity shard loss · verifier reconstruction",
-        coveragePercent: rsCoverage,
-        meta: `${queryWeek} queries (7d) · chunks ${chunks}`,
-      },
-    ],
+    summary: {
+      label: "Default durability",
+      description: "Subnet-backed replication with hybrid retrieval; single standard storage path.",
+      coveragePercent,
+      meta: `${ingestWeek} ingest events (7d) · ${queryWeek} queries (7d) · ${chunks} stored chunks`,
+    },
     repairQueue: [
       {
         id: "rq-1",

@@ -82,7 +82,6 @@ async function main() {
       body: JSON.stringify({
         content,
         role: "assistant",
-        tier: "basic",
         multimodal_type: "text",
         ...cursorHookStoreFields(input),
       }),

@@ -50,7 +50,6 @@ export async function POST(request: Request) {
     session_id: typeof body.session_id === "string" ? body.session_id : subnetSessionIdForUser(userId),
     content,
     role: typeof body.role === "string" ? body.role : "user",
-    tier: typeof body.tier === "string" ? body.tier : "basic",
     event_at: typeof body.event_at === "string" ? body.event_at : undefined,
     multimodal_type: typeof body.multimodal_type === "string" ? body.multimodal_type : undefined,
     embedding: Array.isArray(body.embedding) ? body.embedding : undefined,

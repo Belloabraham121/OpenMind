@@ -153,7 +153,6 @@ class Miner:
                     "timestamp": ts,
                     "recorded_at": ts,
                     "event_at": event_at,
-                    "tier": synapse.tier,
                     "multimodal_type": synapse.multimodal_type,
                 },
             )
@@ -277,7 +276,6 @@ class Miner:
                 embedding=synapse.embedding,
                 top_k=synapse.top_k,
                 filters=clean_filters,
-                tier=synapse.tier,
                 as_of_timestamp=synapse.as_of_timestamp,
                 version_id=synapse.version_id,
                 diff_since=synapse.diff_since,

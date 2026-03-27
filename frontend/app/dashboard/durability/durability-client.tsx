@@ -7,8 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { apiJson } from "@/lib/api-client"
 import { Loader2 } from "lucide-react"
 
-type Tier = {
-  id: string
+type Summary = {
   label: string
   description: string
   coveragePercent: number
@@ -23,7 +22,7 @@ type Repair = {
 }
 
 type DurabilityPayload = {
-  tiers: Tier[]
+  summary: Summary
   repairQueue: Repair[]
   storedChunks: number
   gatewayConfigured: boolean
@@ -49,7 +48,7 @@ export function DurabilityClient() {
     <>
       <DashboardPageIntro
         title="Durability & Storage"
-        description="Tier coverage blends stored chunk stats with activity; repair row reflects gateway reachability."
+        description="Coverage blends stored chunk stats with recent activity; repair reflects gateway reachability."
       />
       {loading || !data ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -67,23 +66,19 @@ export function DurabilityClient() {
               <> · Gateway not configured</>
             )}
           </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            {data.tiers.map((t) => (
-              <Card key={t.id} className="border-foreground/10 shadow-none">
-                <CardHeader>
-                  <CardTitle className="font-display text-xl">{t.label}</CardTitle>
-                  <CardDescription>{t.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">{t.meta}</p>
-                  <Progress value={t.coveragePercent} className="h-2" />
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Coverage {t.coveragePercent}% · heuristic
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card className="border-foreground/10 shadow-none">
+            <CardHeader>
+              <CardTitle className="font-display text-xl">{data.summary.label}</CardTitle>
+              <CardDescription>{data.summary.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">{data.summary.meta}</p>
+              <Progress value={data.summary.coveragePercent} className="h-2" />
+              <p className="font-mono text-xs text-muted-foreground">
+                Coverage {data.summary.coveragePercent}% · heuristic
+              </p>
+            </CardContent>
+          </Card>
           <Card className="border-foreground/10 shadow-none">
             <CardHeader>
               <CardTitle className="font-display text-xl">Repair & verification queue</CardTitle>

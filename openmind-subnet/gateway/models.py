@@ -18,7 +18,6 @@ class StoreRequest(BaseModel):
     session_id: str
     content: str
     role: str = "user"
-    tier: str = "basic"
     event_at: Optional[str] = None
     multimodal_type: Optional[str] = None
     embedding: Optional[List[float]] = None
@@ -35,7 +34,6 @@ class QueryRequest(BaseModel):
     top_k: int = 10
     smart: bool = True
     filters: Dict[str, Any] = Field(default_factory=dict)
-    tier: str = "basic"
     multimodal_type: Optional[str] = None
 
 

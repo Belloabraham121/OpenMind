@@ -30,7 +30,6 @@ class OpenMindRequest(bt.Synapse):
     embedding: Optional[List[float]] = None
     top_k: int = 10
     filters: Dict[str, Any] = {}
-    tier: str = "basic"  # e.g. "basic" | "premium"
 
     # ---- Temporal grounding ----
     event_at: Optional[str] = None  # ISO 8601 — when the described event occurred

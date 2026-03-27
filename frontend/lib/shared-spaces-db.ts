@@ -137,3 +137,9 @@ export async function getSharedSpaceIfAllowed(spaceId: ObjectId, userId: ObjectI
     $or: [{ ownerId: userId }, { memberUserIds: userId }],
   })
 }
+
+export async function deleteSharedSpace(params: { spaceId: ObjectId; ownerId: ObjectId }) {
+  const col = await sharedSpacesCollection()
+  const res = await col.deleteOne({ _id: params.spaceId, ownerId: params.ownerId })
+  return res.deletedCount > 0
+}

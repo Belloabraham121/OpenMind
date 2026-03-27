@@ -115,7 +115,7 @@ export async function GET() {
       {
         label: "Stored chunks",
         value: formatChunks(storedChunks),
-        hint: storedChunks > 0 ? "App + gateway aggregate" : "Lossless tier (baseline)",
+        hint: storedChunks > 0 ? "App + gateway aggregate" : "Lossless default durability",
       },
       {
         label: "p95 retrieval",

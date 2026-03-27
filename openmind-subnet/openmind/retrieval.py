@@ -299,7 +299,6 @@ def retrieve(
     embedding: Optional[List[float]],
     top_k: int,
     filters: Dict[str, Any],
-    tier: str,
     as_of_timestamp: Optional[str] = None,
     version_id: Optional[str] = None,
     diff_since: Optional[str] = None,

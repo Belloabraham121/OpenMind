@@ -113,7 +113,6 @@ async def openmind_store(
     content: str,
     session_id: Optional[str] = None,
     role: str = "user",
-    tier: str = "basic",
     event_at: Optional[str] = None,
     multimodal_type: Optional[str] = None,
 ) -> str:
@@ -129,14 +128,12 @@ async def openmind_store(
             In **direct validator mode** (no ``--bff-url``), ``session_id`` is required.
         content: The text content to store.
         role: Who produced the content — "user", "assistant", or "system".
-        tier: Durability tier — "basic" (replicated) or "premium" (Reed-Solomon).
         event_at: ISO-8601 timestamp of when the described event occurred (optional).
         multimodal_type: Optional — "text", "image", or "pdf".
     """
     payload: dict = {
         "content": content,
         "role": role,
-        "tier": tier,
         "event_at": event_at,
         "multimodal_type": multimodal_type,
     }
@@ -155,7 +152,6 @@ async def openmind_query(
     session_id: Optional[str] = None,
     top_k: int = 10,
     smart: bool = True,
-    tier: str = "basic",
 ) -> str:
     """Search and retrieve memories from the OpenMind memory layer.
 
@@ -170,13 +166,11 @@ async def openmind_query(
         query: Natural language search query.
         top_k: Maximum number of results to return.
         smart: Use two-phase retrieval (default True). Set False for legacy mode.
-        tier: Durability tier — "basic" or "premium".
     """
     payload: dict = {
         "query": query,
         "top_k": top_k,
         "smart": smart,
-        "tier": tier,
     }
     if session_id:
         payload["session_id"] = session_id

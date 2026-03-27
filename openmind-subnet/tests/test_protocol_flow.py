@@ -15,7 +15,6 @@ def test_request_deserialize_propagates_results():
         embedding=[0.9, 0.1],
         top_k=1,
         filters={"tag": "keep"},
-        tier="basic",
     )
 
     req.results = retrieval.retrieve(
@@ -24,7 +23,6 @@ def test_request_deserialize_propagates_results():
         embedding=req.embedding,
         top_k=req.top_k,
         filters=req.filters,
-        tier=req.tier,
     )
 
     resp = req.deserialize()

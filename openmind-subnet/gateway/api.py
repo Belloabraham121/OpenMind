@@ -87,13 +87,13 @@ CHALLENGE_MODES: List[Dict[str, Any]] = [
         "id": 3,
         "key": "extraction",
         "label": "Reconstruction (extraction)",
-        "description": "Fact extraction count and quality vs synthetic prompts.",
+        "description": "Fact extraction signals in retrieval responses over observed subnet memory.",
     },
     {
         "id": 4,
         "key": "temporal",
         "label": "Temporal accuracy",
-        "description": "Time-aware extraction alignment on dated content.",
+        "description": "Temporal structure in retrieved chunks (e.g. stored episodes with time context).",
     },
 ]
 
@@ -319,7 +319,6 @@ async def memory_store(body: StoreRequest):
         embedding=body.embedding,
         event_at=body.event_at,
         filters={**body.filters, "_action": "store", "_role": body.role},
-        tier=body.tier,
         multimodal_type=body.multimodal_type,
         shared_space_id=body.shared_space_id,
         author=body.author,
@@ -348,7 +347,6 @@ async def memory_query(body: QueryRequest):
         top_k=body.top_k,
         as_of_timestamp=resolved_time,
         filters=filters,
-        tier=body.tier,
         multimodal_type=body.multimodal_type,
     )
     responses = await _query_miners(synapse)
