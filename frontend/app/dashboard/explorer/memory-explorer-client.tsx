@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MemoryMarkdown } from "@/components/dashboard/memory-markdown"
+import { MemoryIngestKnowledgeGraph } from "@/components/dashboard/memory-ingest-knowledge-graph"
+import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api-client"
 import type {
   MemoryIndexListEntry,
@@ -42,6 +44,32 @@ function ingestDetailSectionLabel(d: MemoryIngestDetail): string {
   if (d.role === "user") return "User"
   if (d.role === "assistant") return "Assistant"
   return "Stored content"
+}
+
+/** Default subnet namespace is identical for most ingests — hide the noisy repeat on list cards. */
+function MemoryNamespaceHint({
+  sessionId,
+  defaultSessionId,
+}: {
+  sessionId: string | null | undefined
+  defaultSessionId: string | null
+}) {
+  if (!sessionId) {
+    return (
+      <p className="text-[10px] italic text-muted-foreground">Memory namespace not recorded</p>
+    )
+  }
+  if (defaultSessionId && sessionId === defaultSessionId) {
+    return null
+  }
+  return (
+    <p
+      className="break-all font-mono text-[10px] leading-snug text-muted-foreground"
+      title={sessionId}
+    >
+      namespace: {sessionId}
+    </p>
+  )
 }
 
 function normalizeResults(data: unknown): MemoryQueryResultItem[] {
@@ -117,6 +145,16 @@ export function MemoryExplorerClient() {
     MemoryIngestDetail[] | null
   >(null)
   const [ingestDetailLoading, setIngestDetailLoading] = useState(false)
+  const [ingestFocusId, setIngestFocusId] = useState<string | null>(null)
+
+  const selectIngestGraphNode = useCallback((id: string) => {
+    setIngestFocusId(id)
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`ingest-detail-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -200,6 +238,20 @@ export function MemoryExplorerClient() {
     if (!sessionReady) return
     void fetchIndexPage(null, false)
   }, [sessionReady, appliedFilter, appliedSession, fetchIndexPage])
+
+  useEffect(() => {
+    if (!ingestOpen) {
+      setIngestFocusId(null)
+      return
+    }
+    if (ingestOpen.kind === "single" && ingestDetailSingle) {
+      setIngestFocusId(ingestDetailSingle.id)
+    } else if (ingestOpen.kind === "turn" && ingestDetailTurn) {
+      setIngestFocusId(ingestDetailTurn.user.id)
+    } else if (ingestOpen.kind === "thread" && ingestDetailThread?.length) {
+      setIngestFocusId(ingestDetailThread[0].id)
+    }
+  }, [ingestOpen, ingestDetailSingle, ingestDetailTurn, ingestDetailThread])
 
   function applyFilters() {
     setAppliedFilter(filterText.trim())
@@ -330,10 +382,9 @@ export function MemoryExplorerClient() {
           <h2 className="text-sm font-semibold tracking-tight">All stored memories</h2>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Shown from your account activity (ingests). When Cursor sends a{" "}
-          <span className="font-mono text-[10px]">generation_id</span>, your prompt, code edits,
-          and assistant reply for that Composer step are grouped into one card. Older captures
-          without that id still pair prompt + reply when adjacent.
+          Ingests from your activity log. Composer steps group prompt, file edits, and reply.
+          Open a card for a knowledge-flow graph and jump between linked parts. Your default memory
+          namespace is the same for most rows, so list cards hide that id.
         </p>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="relative min-w-0 flex-1">
@@ -442,15 +493,12 @@ export function MemoryExplorerClient() {
                       {gwBad}
                       {fullText}
                     </CardTitle>
-                    {assistant.sessionId ? (
-                      <p className="font-mono text-xs leading-snug text-foreground break-all">
-                        {assistant.sessionId}
-                      </p>
-                    ) : (
-                      <p className="text-xs italic text-muted-foreground">session id not recorded</p>
-                    )}
+                    <MemoryNamespaceHint
+                      sessionId={assistant.sessionId}
+                      defaultSessionId={defaultSessionId}
+                    />
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      turn · user + assistant (auto-captured)
+                      Turn · prompt + reply · open for flow graph
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pt-0">
@@ -467,7 +515,7 @@ export function MemoryExplorerClient() {
                       {assistant.summary}
                     </div>
                     <span className="block text-[11px] text-muted-foreground/80">
-                      Click to open details →
+                      Click for graph + full text →
                     </span>
                   </CardContent>
                 </Card>
@@ -493,7 +541,6 @@ export function MemoryExplorerClient() {
               )
               const anyGwBad = members.some((m) => m.gatewayOk === false)
               const allFull = members.every((m) => m.hasStoredContent)
-              const sid = last.sessionId ?? first.sessionId
 
               return (
                 <Card
@@ -521,25 +568,20 @@ export function MemoryExplorerClient() {
                         <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">· preview</span>
                       )}
                     </CardTitle>
-                    {sid ? (
-                      <p className="font-mono text-xs leading-snug text-foreground break-all">{sid}</p>
-                    ) : (
-                      <p className="text-xs italic text-muted-foreground">session id not recorded</p>
-                    )}
+                    <MemoryNamespaceHint
+                      sessionId={last.sessionId ?? first.sessionId}
+                      defaultSessionId={defaultSessionId}
+                    />
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      composer step · {members.length} events
-                      {codeN ? ` · ${codeN} file edit${codeN === 1 ? "" : "s"}` : ""}
+                      Composer step · {members.length} parts
+                      {codeN ? ` · ${codeN} edit${codeN === 1 ? "" : "s"}` : ""} · graph inside
                     </p>
-                    <p className="font-mono text-[10px] text-muted-foreground break-all">
-                      gen: {generationId.slice(0, 24)}
-                      {generationId.length > 24 ? "…" : ""}
+                    <p
+                      className="font-mono text-[10px] text-muted-foreground/90"
+                      title={`generation ${generationId}${conversationId ? ` · conversation ${conversationId}` : ""}`}
+                    >
+                      step · {generationId.slice(0, 10)}…
                     </p>
-                    {conversationId ? (
-                      <p className="font-mono text-[10px] text-muted-foreground/90 break-all">
-                        conv: {conversationId.slice(0, 28)}
-                        {conversationId.length > 28 ? "…" : ""}
-                      </p>
-                    ) : null}
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pt-0">
                     {userLine ? (
@@ -564,7 +606,7 @@ export function MemoryExplorerClient() {
                       </div>
                     ) : null}
                     <span className="block text-[11px] text-muted-foreground/80">
-                      Click to open full step →
+                      Click for linked flow + bodies →
                     </span>
                   </CardContent>
                 </Card>
@@ -598,13 +640,7 @@ export function MemoryExplorerClient() {
                       <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">· preview</span>
                     )}
                   </CardTitle>
-                  {row.sessionId ? (
-                    <p className="font-mono text-xs leading-snug text-foreground break-all">
-                      {row.sessionId}
-                    </p>
-                  ) : (
-                    <p className="text-xs italic text-muted-foreground">session id not recorded</p>
-                  )}
+                  <MemoryNamespaceHint sessionId={row.sessionId} defaultSessionId={defaultSessionId} />
                   {row.role ? (
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       role: {row.role}
@@ -614,7 +650,7 @@ export function MemoryExplorerClient() {
                 <CardContent className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap pt-0">
                   {row.summary}
                   <span className="mt-2 block text-[11px] text-muted-foreground/80">
-                    Click to open details →
+                    Click for graph + detail →
                   </span>
                 </CardContent>
               </Card>
@@ -764,22 +800,22 @@ export function MemoryExplorerClient() {
       >
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl"
         >
           <SheetHeader className="border-b border-border/60 px-4 py-4 text-left">
             <SheetTitle className="font-display text-lg">
               {ingestOpen?.kind === "turn"
                 ? "Conversation turn"
                 : ingestOpen?.kind === "thread"
-                  ? "Composer step"
+                  ? "Linked composer step"
                   : "Memory ingest"}
             </SheetTitle>
             <SheetDescription className="text-xs">
               {ingestOpen?.kind === "turn"
-                ? "User prompt and assistant reply from the same auto-captured turn."
+                ? "Follow the flow below, or click a node to jump to its full text."
                 : ingestOpen?.kind === "thread"
-                  ? "Everything Cursor logged for this Composer generation: your message, file edits, and the reply."
-                  : "Stored payload and request metadata from your dashboard activity log."}
+                  ? "Graph shows how prompt, file edits, and reply connect for this step."
+                  : "Flow graph (single node) and full stored content."}
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 px-4 py-3">
@@ -790,9 +826,56 @@ export function MemoryExplorerClient() {
               </div>
             ) : ingestOpen?.kind === "thread" && ingestDetailThread?.length ? (
               <ScrollArea className="h-[calc(100vh-8rem)] pr-3">
-                <div className="flex flex-col gap-10 pb-6">
+                <div className="flex flex-col gap-6 pb-8 pr-1">
+                  <MemoryIngestKnowledgeGraph
+                    details={ingestDetailThread}
+                    selectedId={ingestFocusId}
+                    onSelect={selectIngestGraphNode}
+                  />
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-full border-foreground/15 text-[10px] uppercase tracking-wide"
+                      >
+                        Session &amp; Cursor ids
+                        <ChevronDown className="ml-1 size-3" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] leading-relaxed">
+                      <p className="break-all font-mono text-muted-foreground">
+                        <span className="text-muted-foreground/80">session_id · </span>
+                        {ingestDetailThread[0]?.sessionId ?? "—"}
+                      </p>
+                      {ingestDetailThread[0]?.cursorGenerationId ? (
+                        <p className="break-all font-mono text-muted-foreground">
+                          <span className="text-muted-foreground/80">generation · </span>
+                          {ingestDetailThread[0].cursorGenerationId}
+                        </p>
+                      ) : null}
+                      {ingestDetailThread[0]?.cursorConversationId ? (
+                        <p className="break-all font-mono text-muted-foreground">
+                          <span className="text-muted-foreground/80">conversation · </span>
+                          {ingestDetailThread[0].cursorConversationId}
+                        </p>
+                      ) : null}
+                    </CollapsibleContent>
+                  </Collapsible>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Full bodies
+                  </p>
                   {ingestDetailThread.map((ingestDetail) => (
-                    <div key={ingestDetail.id} className="flex flex-col gap-3">
+                    <div
+                      key={ingestDetail.id}
+                      id={`ingest-detail-${ingestDetail.id}`}
+                      className={cn(
+                        "scroll-mt-4 flex flex-col gap-3 rounded-lg border border-transparent p-2 transition-colors",
+                        ingestFocusId === ingestDetail.id &&
+                          "border-primary/20 bg-primary/4 shadow-sm",
+                      )}
+                    >
                       <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
                         {ingestDetailSectionLabel(ingestDetail)}
                       </p>
@@ -803,22 +886,6 @@ export function MemoryExplorerClient() {
                             {new Date(ingestDetail.createdAt).toLocaleString()}
                           </dd>
                         </div>
-                        {ingestDetail.sessionId ? (
-                          <div>
-                            <dt className="text-muted-foreground">session_id</dt>
-                            <dd className="break-all font-mono text-foreground">
-                              {ingestDetail.sessionId}
-                            </dd>
-                          </div>
-                        ) : null}
-                        {ingestDetail.cursorGenerationId ? (
-                          <div>
-                            <dt className="text-muted-foreground">Cursor generation</dt>
-                            <dd className="break-all font-mono text-foreground text-[10px]">
-                              {ingestDetail.cursorGenerationId}
-                            </dd>
-                          </div>
-                        ) : null}
                         <div>
                           <dt className="text-muted-foreground">Gateway</dt>
                           <dd className="text-foreground">
@@ -872,12 +939,43 @@ export function MemoryExplorerClient() {
               </ScrollArea>
             ) : ingestOpen?.kind === "turn" && ingestDetailTurn ? (
               <ScrollArea className="h-[calc(100vh-8rem)] pr-3">
-                <div className="flex flex-col gap-8 pb-6">
+                <div className="flex flex-col gap-6 pb-6">
+                  <MemoryIngestKnowledgeGraph
+                    details={[ingestDetailTurn.user, ingestDetailTurn.assistant]}
+                    selectedId={ingestFocusId}
+                    onSelect={selectIngestGraphNode}
+                  />
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-full border-foreground/15 text-[10px] uppercase tracking-wide"
+                      >
+                        Session &amp; technical
+                        <ChevronDown className="ml-1 size-3" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
+                      {ingestDetailTurn.user.sessionId ? (
+                        <p className="break-all">session_id · {ingestDetailTurn.user.sessionId}</p>
+                      ) : null}
+                    </CollapsibleContent>
+                  </Collapsible>
                   {(["user", "assistant"] as const).map((side) => {
                     const ingestDetail = ingestDetailTurn[side]
                     const label = side === "user" ? "Your prompt" : "Assistant reply"
                     return (
-                      <div key={side} className="flex flex-col gap-3">
+                      <div
+                        key={ingestDetail.id}
+                        id={`ingest-detail-${ingestDetail.id}`}
+                        className={cn(
+                          "scroll-mt-4 flex flex-col gap-3 rounded-lg border border-transparent p-2 transition-colors",
+                          ingestFocusId === ingestDetail.id &&
+                            "border-primary/20 bg-primary/4 shadow-sm",
+                        )}
+                      >
                         <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
                           {label}
                         </p>
@@ -888,14 +986,6 @@ export function MemoryExplorerClient() {
                               {new Date(ingestDetail.createdAt).toLocaleString()}
                             </dd>
                           </div>
-                          {ingestDetail.sessionId ? (
-                            <div>
-                              <dt className="text-muted-foreground">session_id</dt>
-                              <dd className="break-all font-mono text-foreground">
-                                {ingestDetail.sessionId}
-                              </dd>
-                            </div>
-                          ) : null}
                           <div>
                             <dt className="text-muted-foreground">Gateway</dt>
                             <dd className="text-foreground">
@@ -951,7 +1041,40 @@ export function MemoryExplorerClient() {
                 </div>
               </ScrollArea>
             ) : ingestOpen?.kind === "single" && ingestDetailSingle ? (
-              <div className="flex h-full flex-col gap-3">
+              <div className="flex h-full flex-col gap-4 overflow-y-auto">
+                <MemoryIngestKnowledgeGraph
+                  details={[ingestDetailSingle]}
+                  selectedId={ingestFocusId}
+                  onSelect={selectIngestGraphNode}
+                />
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-full border-foreground/15 text-[10px] uppercase tracking-wide"
+                    >
+                      Session &amp; technical
+                      <ChevronDown className="ml-1 size-3" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
+                    {ingestDetailSingle.sessionId ? (
+                      <p className="break-all">session_id · {ingestDetailSingle.sessionId}</p>
+                    ) : null}
+                    {ingestDetailSingle.cursorGenerationId ? (
+                      <p className="break-all">generation · {ingestDetailSingle.cursorGenerationId}</p>
+                    ) : null}
+                  </CollapsibleContent>
+                </Collapsible>
+                <div
+                  id={`ingest-detail-${ingestDetailSingle.id}`}
+                  className={cn(
+                    "flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-transparent p-1 transition-colors",
+                    ingestFocusId === ingestDetailSingle.id && "border-primary/20 bg-primary/4",
+                  )}
+                >
                 <dl className="grid gap-2 text-xs">
                   <div>
                     <dt className="text-muted-foreground">Time</dt>
@@ -959,14 +1082,6 @@ export function MemoryExplorerClient() {
                       {new Date(ingestDetailSingle.createdAt).toLocaleString()}
                     </dd>
                   </div>
-                  {ingestDetailSingle.sessionId ? (
-                    <div>
-                      <dt className="text-muted-foreground">session_id</dt>
-                      <dd className="break-all font-mono text-foreground">
-                        {ingestDetailSingle.sessionId}
-                      </dd>
-                    </div>
-                  ) : null}
                   {ingestDetailSingle.role ? (
                     <div>
                       <dt className="text-muted-foreground">role</dt>
@@ -1037,6 +1152,7 @@ export function MemoryExplorerClient() {
                       )}
                     </div>
                   </ScrollArea>
+                </div>
                 </div>
               </div>
             ) : (
