@@ -6,8 +6,10 @@ Runs inside the validator process and translates HTTP requests into
 """
 
 import copy
+import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -37,7 +39,20 @@ from gateway.models import (
 from openmind.extraction import extract_temporal
 
 
-app = FastAPI(title="OpenMind Gateway", version="0.1.0")
+@asynccontextmanager
+async def _gateway_lifespan(app: FastAPI):
+    """Log key routes once; helps confirm the process picked up the latest ``api.py``."""
+    logging.getLogger("uvicorn.error").info(
+        "OpenMind gateway: GET /v1/subnet/quality (and /v1/network/quality) — restart validator after pulling gateway changes."
+    )
+    yield
+
+
+app = FastAPI(
+    title="OpenMind Gateway",
+    version="0.1.0",
+    lifespan=_gateway_lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +62,40 @@ app.add_middleware(
 )
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+# Rotates with ``Validator.step % len(CHALLENGE_MODES)`` — keep in sync with neurons/validator.py
+CHALLENGE_MODES: List[Dict[str, Any]] = [
+    {
+        "id": 0,
+        "key": "retrieval",
+        "label": "Retrieval recall",
+        "description": "Ground-truth chunk recall against validator-held probes.",
+    },
+    {
+        "id": 1,
+        "key": "storage",
+        "label": "Storage fidelity",
+        "description": "Structured memory results present for durability probes.",
+    },
+    {
+        "id": 2,
+        "key": "versioning",
+        "label": "Version & checkpoint",
+        "description": "Version and checkpoint consistency signals.",
+    },
+    {
+        "id": 3,
+        "key": "extraction",
+        "label": "Reconstruction (extraction)",
+        "description": "Fact extraction count and quality vs synthetic prompts.",
+    },
+    {
+        "id": 4,
+        "key": "temporal",
+        "label": "Temporal accuracy",
+        "description": "Time-aware extraction alignment on dated content.",
+    },
+]
 
 
 @app.get("/", include_in_schema=False)
@@ -447,6 +496,67 @@ async def chat_respond(body: ChatRequest):
         model=body.model,
         token_estimate=_estimate_tokens(context_text),
     )
+
+
+def _subnet_quality_payload() -> Dict[str, Any]:
+    """EMA leaderboard and challenge focus from the live validator (if configured)."""
+    if _validator is None:
+        return {
+            "configured": False,
+            "validator_step": 0,
+            "metagraph_n": 0,
+            "sample_size": 0,
+            "leaderboard": [],
+            "challenge_modes": CHALLENGE_MODES,
+            "current_challenge": None,
+        }
+
+    v = _validator
+    mg = v.metagraph
+    step = int(getattr(v, "step", 0))
+    sample_size = int(getattr(v, "sample_size", 4))
+    modes = CHALLENGE_MODES
+    current = modes[step % len(modes)] if modes else None
+
+    leaderboard: List[Dict[str, Any]] = []
+    if mg is not None:
+        n = int(mg.n)
+        scores = getattr(v, "scores", []) or []
+        for uid in range(n):
+            try:
+                hk = str(mg.hotkeys[uid])
+            except Exception:
+                hk = ""
+            preview = hk[:12] + "…" if len(hk) > 12 else hk
+            ema = float(scores[uid]) if uid < len(scores) else 0.0
+            leaderboard.append(
+                {
+                    "uid": uid,
+                    "hotkey_preview": preview,
+                    "ema_score": round(ema, 4),
+                }
+            )
+        leaderboard.sort(key=lambda row: -float(row["ema_score"]))
+
+    return {
+        "configured": True,
+        "validator_step": step,
+        "metagraph_n": int(mg.n) if mg is not None else 0,
+        "sample_size": sample_size,
+        "leaderboard": leaderboard[:96],
+        "challenge_modes": modes,
+        "current_challenge": current,
+    }
+
+
+@app.get("/v1/subnet/quality")
+@app.get("/v1/network/quality")
+async def subnet_quality():
+    """
+    Miner EMA scores (composite reward) and validator challenge rotation.
+    Used by the dashboard Network Quality view.
+    """
+    return _subnet_quality_payload()
 
 
 @app.get("/v1/health", response_model=HealthResponse)

@@ -114,3 +114,34 @@ export type MemoryIngestDetail = {
   cursorGenerationId?: string | null
   cursorConversationId?: string | null
 }
+
+export type NetworkChallengeMode = {
+  id: number
+  key: string
+  label: string
+  description: string
+}
+
+export type NetworkMinerRow = {
+  rank: number
+  uid: number
+  hotkeyPreview: string
+  emaScore: number
+  retrieval: number | null
+  fidelity: number | null
+  reconstruction: number | null
+  latencyP95Ms: number | null
+}
+
+export type NetworkQualityResponse = {
+  source: "gateway" | "demo"
+  gatewayConfigured: boolean
+  gatewayReachable: boolean | null
+  validatorStep: number | null
+  metagraphN: number | null
+  sampleSize: number | null
+  currentChallenge: NetworkChallengeMode | null
+  challengeModes: NetworkChallengeMode[]
+  miners: NetworkMinerRow[]
+  outcomesNote: string
+}
