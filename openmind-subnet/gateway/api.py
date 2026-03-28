@@ -325,7 +325,12 @@ async def memory_store(body: StoreRequest):
         auth_metadata=body.auth_metadata,
     )
     responses = await _query_miners(synapse)
-    return _best_response(responses)
+    result = _best_response(responses)
+    if _validator is not None:
+        _validator.register_store_results_from_gateway(
+            result.results, body.session_id
+        )
+    return result
 
 
 @app.post("/v1/memory/query", response_model=MemoryResult)

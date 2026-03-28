@@ -1,5 +1,5 @@
 bitarray>=2.9.0
-reedsolo>=1.7.0
+zfec>=1.6.0
 numpy>=1.26.0
 cryptography>=43.0.0
 fastapi>=0.115.0

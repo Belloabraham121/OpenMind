@@ -41,6 +41,39 @@ def _session_dir(session_id: str) -> Path:
     return BASE_DIR / safe
 
 
+def _shard_group_dir(session_id: str, shard_group_id: str) -> Path:
+    sess = _session_dir(session_id)
+    safe_gid = shard_group_id.replace("/", "_").replace("..", "_")
+    return sess / "_shards" / safe_gid
+
+
+def store_shards(
+    session_id: str,
+    shard_id: str,
+    shards: List[bytes],
+) -> Path:
+    """Persist numbered binary shards ``0..len-1`` for tests / tooling."""
+    directory = _shard_group_dir(session_id, shard_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    for i, blob in enumerate(shards):
+        (directory / f"{i}.bin").write_bytes(blob)
+    return directory
+
+
+def load_shards(
+    session_id: str,
+    shard_id: str,
+    max_shards: int,
+) -> List[bytes]:
+    """Load shards ``0 .. max_shards-1``; missing files become ``b''``."""
+    directory = _shard_group_dir(session_id, shard_id)
+    out: List[bytes] = []
+    for i in range(max_shards):
+        path = directory / f"{i}.bin"
+        out.append(path.read_bytes() if path.exists() else b"")
+    return out
+
+
 def store_chunk(
     session_id: str,
     chunk_id: str,

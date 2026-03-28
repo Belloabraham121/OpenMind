@@ -4,6 +4,14 @@ from openmind import retrieval
 from openmind.scoring import get_rewards
 
 
+def test_retrieve_chunks_by_ids_hits_session():
+    session_id = "probe-sess"
+    retrieval.add_chunk(session_id, "alpha", [1.0, 0.0], {"id": "c-a", "type": "episode"})
+    retrieval.add_chunk(session_id, "beta", [0.0, 1.0], {"id": "c-b", "type": "episode"})
+    out = retrieval.retrieve_chunks_by_ids(session_id, ["c-b"], top_k=5)
+    assert any(r.get("id") == "c-b" and r.get("content") == "beta" for r in out)
+
+
 def test_vector_retrieval_orders_by_similarity():
     session_id = "s1"
 

@@ -25,6 +25,7 @@ ALPHA_CHECKPOINT = 1.0
 ALPHA_LATENCY = 1.0
 ALPHA_EXTRACTION = 3.0
 ALPHA_TEMPORAL = 2.0
+ALPHA_RS_RECONSTRUCT = 2.0
 
 
 def _extract_metrics(response: Any) -> dict:
@@ -88,7 +89,9 @@ def reward(step: int, response: Any) -> float:
         metrics["temporal_accuracy"] > 0.0,
     ])
 
-    if has_legacy or has_extraction:
+    rs_active = isinstance(response, Mapping) and "rs_reconstruction_ok" in response
+
+    if has_legacy or has_extraction or rs_active:
         r_storage = 1.0 if metrics["storage_ok"] else 0.0
         r_retrieval = max(0.0, min(1.0, metrics["retrieval_recall"]))
         r_version = 1.0 if metrics["version_ok"] else 0.0
@@ -106,6 +109,10 @@ def reward(step: int, response: Any) -> float:
             + 0.2 * r_rel_accuracy
             + 0.2 * r_temporal
         ) if has_extraction else 0.0
+
+        r_rs = 0.0
+        if rs_active:
+            r_rs = 1.0 if bool(response.get("rs_reconstruction_ok")) else 0.0
 
         num = (
             ALPHA_STORAGE * r_storage
@@ -125,6 +132,9 @@ def reward(step: int, response: Any) -> float:
             + ALPHA_EXTRACTION
             + ALPHA_TEMPORAL
         )
+        if rs_active:
+            num += ALPHA_RS_RECONSTRUCT * r_rs
+            den += ALPHA_RS_RECONSTRUCT
         score = float(num / den)
         bt.logging.info(f"Reward(step={step}) with metrics -> {score:.4f}")
         return score

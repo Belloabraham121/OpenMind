@@ -7,8 +7,10 @@ Concrete implementation of a Bittensor validator that queries miners using the
 
 import asyncio
 import copy
+import hashlib
 import os
 import random
+from collections import Counter
 import threading
 import time
 from typing import Any, Dict, List, Mapping, Tuple
@@ -85,6 +87,11 @@ class Validator:
         self._storage_challenges: Dict[str, str] = {}
         self._version_challenges: Dict[str, Dict[str, Any]] = {}
         self._known_chunk_ids: List[str] = []
+        self._chunk_content_sha256: Dict[str, str] = {}
+        self._rs_challenge_chunk_id: str | None = None
+        self._rs_expected_sha256: str | None = None
+        self._chunk_source_session: Dict[str, str] = {}
+        self._live_session_id: str | None = None
 
         bt.logging.info(
             f"OpenMind validator initialised "
@@ -112,6 +119,50 @@ class Validator:
             else:
                 patched.append(ax)
         return patched
+
+    def register_store_results_from_gateway(
+        self, results: Any, session_id: str | None = None
+    ) -> None:
+        """
+        Record episode ids from HTTP/MCP store traffic (gateway → miners).
+
+        Validator ``forward()`` only sees its own dendrite queries, not the
+        replies from ``POST /v1/memory/store``, so hooks and MCP would never
+        populate ``_known_chunk_ids`` / ``_chunk_content_sha256`` without this.
+
+        ``session_id`` (from the store body) is kept per chunk so mode 0 recall
+        can query the miner's real namespace instead of ``validator-session-*``.
+        """
+        if not results:
+            return
+        if isinstance(session_id, str) and session_id.strip():
+            self._live_session_id = session_id.strip()
+        for r in results:
+            if not isinstance(r, Mapping):
+                continue
+            cid = r.get("id")
+            if isinstance(cid, str):
+                self._known_chunk_ids.append(cid)
+                if isinstance(session_id, str) and session_id.strip():
+                    self._chunk_source_session[cid] = session_id.strip()
+            content = r.get("content")
+            if isinstance(cid, str) and isinstance(content, str):
+                self._chunk_content_sha256[cid] = hashlib.sha256(
+                    content.encode("utf-8")
+                ).hexdigest()
+
+    def _session_for_recall_probes(self, probes: List[str]) -> str | None:
+        """Pick the most common source session among probe chunk ids."""
+        if not probes:
+            return None
+        counts: Counter[str] = Counter()
+        for p in probes:
+            s = self._chunk_source_session.get(p)
+            if isinstance(s, str) and s:
+                counts[s] += 1
+        if not counts:
+            return None
+        return counts.most_common(1)[0][0]
 
     def _current_challenge_id(self) -> str:
         return f"step-{int(self.step)}"
@@ -235,22 +286,38 @@ class Validator:
                             metrics["storage_ok"] = True
                             metrics["temporal_accuracy"] = 1.0
 
+            if mode == 5:
+                metrics["rs_reconstruction_ok"] = False
+                expected = self._rs_expected_sha256
+                target = self._rs_challenge_chunk_id
+                results = getattr(resp, "results", None)
+                if results is None and isinstance(resp, Mapping):
+                    results = resp.get("results")
+                if results and isinstance(results, list) and expected and target:
+                    for r in results:
+                        if not isinstance(r, Mapping):
+                            continue
+                        if str(r.get("id")) == str(target) and r.get(
+                            "content_sha256"
+                        ) == expected:
+                            metrics["rs_reconstruction_ok"] = True
+                            break
+
             metrics_list.append(metrics)
 
         return metrics_list
 
     async def forward(self):
         """
-        Validator forward pass with 5 challenge modes (same PRD-style query to miners;
-        scoring differs per mode). All modes issue retrieval-style synapses — no synthetic
-        store payloads. Mode 0 uses chunk-id probes from ``_known_chunk_ids`` (possession /
-        recall on data miners have already returned). Modes 1–4 reuse the same request shape;
-        miners are judged on non-empty results, version fields, fact_count, etc.
+        Validator forward pass with 6 challenge modes.
 
-        This aligns with the PRD's random / probe-based challenges that verify miners still
-        surface memory that has flowed through the subnet rather than canned benchmark text.
+        Modes 0–4: retrieval-style synapses; scoring differs per mode (recall, storage,
+        versioning, extraction, temporal). Mode 5 issues an RS reconstruction challenge:
+        miners must rebuild a stored chunk's plaintext after simulating loss of the four
+        parity shares, and return a matching SHA-256 over ``content`` (ground-truth hash
+        is tracked from prior ``status: stored`` responses).
         """
-        mode = int(self.step) % 5
+        mode = int(self.step) % 6
 
         challenge_id, probes = self._build_retrieval_challenge()
 
@@ -266,11 +333,79 @@ class Validator:
             f"Validator step={self.step} mode={mode} querying {len(miner_uids)} miners."
         )
 
+        self._rs_challenge_chunk_id = None
+        self._rs_expected_sha256 = None
+        synapse_filters: Dict[str, Any] = {"challenge_mode": mode}
+        if mode == 5:
+            candidates = [
+                cid
+                for cid in dict.fromkeys(self._known_chunk_ids)
+                if cid in self._chunk_content_sha256
+            ]
+            if candidates:
+                cid = random.choice(candidates)
+                self._rs_challenge_chunk_id = cid
+                self._rs_expected_sha256 = self._chunk_content_sha256[cid]
+                synapse_filters["rs_chunk_id"] = cid
+                synapse_filters["rs_drop_indices"] = [10, 11, 12, 13]
+                bt.logging.info(
+                    f"RS reconstruction challenge: chunk_id={str(cid)[:8]}… "
+                    "drop parity shards 10–13 (expect sha256 match)"
+                )
+            else:
+                bt.logging.warning(
+                    "RS reconstruction challenge (mode 5): no target — ingest at least one "
+                    "memory via this miner first so we cache chunk id + content hash. "
+                    f"(known_chunk_ids={len(self._known_chunk_ids)}, "
+                    f"with_hash={len(self._chunk_content_sha256)})"
+                )
+
+        default_sid = f"validator-session-{self.wallet.hotkey.ss58_address}"
+        live = self._live_session_id
+        synapse_session_id = default_sid
+
+        if mode != 5:
+            if mode == 0:
+                if probes:
+                    recall_sid = self._session_for_recall_probes(probes)
+                    if recall_sid:
+                        synapse_session_id = recall_sid
+                        synapse_filters["_recall_probes"] = list(probes)
+                        bt.logging.info(
+                            f"Mode 0 recall: session={recall_sid[:24]}… "
+                            f"probes={len(probes)}"
+                        )
+                    elif live:
+                        synapse_session_id = live
+                        synapse_filters["_recall_probes"] = list(probes)
+                        bt.logging.info(
+                            f"Mode 0: live session + probe ids {live[:24]}…"
+                        )
+                    else:
+                        bt.logging.warning(
+                            "Mode 0: no session for probes and no live session — "
+                            "store via gateway first."
+                        )
+                elif live:
+                    synapse_session_id = live
+                    bt.logging.info(f"Mode 0: live session {live[:24]}… (no probes yet)")
+            elif mode in (1, 2, 3, 4):
+                if live:
+                    synapse_session_id = live
+                    bt.logging.info(
+                        f"Mode {mode}: live session {live[:24]}…"
+                    )
+                else:
+                    bt.logging.warning(
+                        f"Mode {mode}: no live session yet — "
+                        "POST /v1/memory/store once via gateway."
+                    )
+
         synapse = OpenMindRequest(
-            session_id=f"validator-session-{self.wallet.hotkey.ss58_address}",
+            session_id=synapse_session_id,
             query=f"step-{self.step}",
             top_k=10,
-            filters={"challenge_mode": mode},
+            filters=synapse_filters,
         )
 
         start = time.time()
@@ -297,6 +432,15 @@ class Validator:
                     cid = r["id"]
                     if isinstance(cid, str):
                         self._known_chunk_ids.append(cid)
+                if (
+                    isinstance(r, Mapping)
+                    and isinstance(r.get("id"), str)
+                    and isinstance(r.get("content"), str)
+                ):
+                    raw = r["content"].encode("utf-8")
+                    self._chunk_content_sha256[str(r["id"])] = hashlib.sha256(
+                        raw
+                    ).hexdigest()
 
         metrics = self._metrics_from_responses(
             mode=mode,

@@ -56,6 +56,8 @@ class OpenMindRequest(bt.Synapse):
     version_diff: Optional[Dict[str, Any]] = None
     provenance_path: Optional[List[str]] = None
     checkpoint: Optional[Dict[str, Any]] = None
+    version_ok: bool = False
+    checkpoint_ok: bool = False
 
     def deserialize(self) -> "OpenMindResponse":
         """
@@ -66,6 +68,8 @@ class OpenMindRequest(bt.Synapse):
             version_diff=self.version_diff,
             provenance_path=self.provenance_path,
             checkpoint=self.checkpoint,
+            version_ok=bool(getattr(self, "version_ok", False)),
+            checkpoint_ok=bool(getattr(self, "checkpoint_ok", False)),
         )
 
 
@@ -80,4 +84,6 @@ class OpenMindResponse:
     version_diff: Optional[Dict[str, Any]] = None
     provenance_path: Optional[List[str]] = None
     checkpoint: Optional[Dict[str, Any]] = None
+    version_ok: bool = False
+    checkpoint_ok: bool = False
 

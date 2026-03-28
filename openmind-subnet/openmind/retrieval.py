@@ -19,8 +19,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from openmind import storage
-from openmind import storage_v2
+from openmind import durability, storage, storage_v2
 
 try:
     from rank_bm25 import BM25Okapi
@@ -41,6 +40,15 @@ _CHUNKS: List[MemoryChunk] = []
 _loaded = False
 _STORAGE_BACKEND = os.environ.get("OPENMIND_STORAGE_BACKEND", "legacy").lower()
 _DUAL_WRITE = os.environ.get("OPENMIND_STORAGE_DUAL_WRITE", "false").lower() == "true"
+_NON_METADATA_FILTERS = frozenset({
+    "challenge_mode",
+    "rs_chunk_id",
+    "rs_drop_indices",
+})
+
+
+def _chunk_metadata_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in filters.items() if k not in _NON_METADATA_FILTERS}
 
 
 def _primary_storage():
@@ -123,6 +131,21 @@ def add_chunk(
                 embedding=embedding,
                 metadata=meta,
             )
+
+        if os.environ.get("OPENMIND_RS_SHARDS", "true").lower() not in (
+            "0",
+            "false",
+            "no",
+        ):
+            try:
+                durability.persist_chunk_rs(
+                    session_id=session_id,
+                    content=content,
+                    embedding=list(embedding),
+                    metadata=meta,
+                )
+            except OSError:
+                pass
 
 
 def update_fact_latest(session_id: str, fact_id: str, is_latest: bool) -> None:
@@ -291,6 +314,52 @@ def _to_result(chunk: MemoryChunk, score: float = 0.0) -> Dict[str, Any]:
     }
 
 
+def count_facts_in_session(session_id: str) -> int:
+    """Number of fact chunks for ``session_id``."""
+    _ensure_loaded()
+    return sum(
+        1
+        for c in _CHUNKS
+        if c.session_id == session_id and c.metadata.get("type") == "fact"
+    )
+
+
+def list_recent_episode_results(session_id: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    """Latest episodes in ``session_id`` (newest first), for validator probes."""
+    _ensure_loaded()
+    eps = [
+        c
+        for c in _CHUNKS
+        if c.session_id == session_id and c.metadata.get("type") == "episode"
+    ]
+    eps.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
+    out = [_to_result(c) for c in eps[:top_k]]
+    return enrich_with_graph(out)
+
+
+def retrieve_chunks_by_ids(
+    session_id: str,
+    chunk_ids: List[str],
+    top_k: int = 10,
+) -> List[Dict[str, Any]]:
+    """
+    Return chunks in ``session_id`` whose metadata ``id`` is in ``chunk_ids``.
+    Used for validator mode 0 (possession / recall probes).
+    """
+    _ensure_loaded()
+    want = set(chunk_ids)
+    out: List[Dict[str, Any]] = []
+    for c in _CHUNKS:
+        if c.session_id != session_id:
+            continue
+        cid = c.metadata.get("id")
+        if cid in want:
+            out.append(_to_result(c, 1.0))
+        if len(out) >= top_k:
+            break
+    return enrich_with_graph(out)
+
+
 # ---- Legacy single-pass retrieval -------------------------------------------
 
 def retrieve(
@@ -313,7 +382,7 @@ def retrieve(
 
     candidates = [c for c in _CHUNKS if c.session_id == session_id]
 
-    for key, value in filters.items():
+    for key, value in _chunk_metadata_filters(filters).items():
         candidates = [c for c in candidates if c.metadata.get(key) == value]
 
     candidates = _temporal_filter(candidates, as_of_timestamp)
@@ -371,7 +440,7 @@ def retrieve_smart(
     facts = [c for c in facts if c.metadata.get("is_latest", True)]
     facts = _temporal_filter(facts, time_point)
 
-    for key, value in filters.items():
+    for key, value in _chunk_metadata_filters(filters).items():
         facts = [c for c in facts if c.metadata.get(key) == value]
 
     fact_results: List[tuple] = []
