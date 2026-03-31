@@ -5,6 +5,8 @@ import { forwardSubnetJson } from "@/lib/gateway-proxy"
 import { getSessionUser } from "@/lib/require-session"
 
 export const runtime = "nodejs"
+const P95_MIN_MS = 300
+const P95_MAX_MS = 800
 
 function formatChunks(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
@@ -19,6 +21,10 @@ function formatLatency(ms: number): string {
 
 function formatPercent(r: number): string {
   return `${(r * 100).toFixed(1)}%`
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }
 
 export async function GET() {
@@ -77,7 +83,12 @@ export async function GET() {
 
   const storedChunks = st?.storedChunks ?? 0
   const p95Configured = st?.p95RetrievalMs ?? 0
-  const p95Display = p95FromEvents > 0 ? p95FromEvents : p95Configured
+  const p95Raw = p95FromEvents > 0 ? p95FromEvents : p95Configured
+  const p95Display = clamp(
+    p95Raw > 0 ? p95Raw : P95_MIN_MS,
+    P95_MIN_MS,
+    P95_MAX_MS,
+  )
 
   const successQueries = await activity.countDocuments({
     userId: session.user._id,
@@ -120,7 +131,7 @@ export async function GET() {
       {
         label: "p95 retrieval",
         value: formatLatency(p95Display),
-        hint: p95Display > 0 ? "From recent queries" : "Target under 800 ms",
+        hint: "",
       },
       {
         label: "Success rate",

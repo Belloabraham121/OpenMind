@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { recordActivity } from "@/lib/record-activity"
+import { syncStoredChunksFromGatewayStore } from "@/lib/dashboard-db"
 import { forwardSubnetJson } from "@/lib/gateway-proxy"
 import { getGatewayAuth, gatewayUnauthorized } from "@/lib/gateway-auth"
 import { subnetSessionIdForUser } from "@/lib/subnet-session"
@@ -85,6 +86,10 @@ export async function POST(request: Request) {
       ...(cursorConversationId ? { cursorConversationId } : {}),
     },
   })
+
+  if (out.ok) {
+    await syncStoredChunksFromGatewayStore(auth.userId, out.data, payload.session_id)
+  }
 
   return NextResponse.json(out.data, { status: out.ok ? 200 : out.status })
 }

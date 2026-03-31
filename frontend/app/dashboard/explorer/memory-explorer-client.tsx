@@ -1,49 +1,56 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useCallback, useEffect, useState } from "react";
+import { DashboardPageIntro } from "@/components/dashboard/dashboard-page-intro";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { Search, Loader2, ChevronDown, RefreshCw, Database } from "lucide-react"
+} from "@/components/ui/collapsible";
+import {
+  Search,
+  Loader2,
+  ChevronDown,
+  RefreshCw,
+  Database,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet"
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { MemoryMarkdown } from "@/components/dashboard/memory-markdown"
-import { MemoryIngestKnowledgeGraph } from "@/components/dashboard/memory-ingest-knowledge-graph"
-import { cn } from "@/lib/utils"
-import { apiFetch } from "@/lib/api-client"
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MemoryMarkdown } from "@/components/dashboard/memory-markdown";
+import { MemoryIngestKnowledgeGraph } from "@/components/dashboard/memory-ingest-knowledge-graph";
+import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client";
 import type {
   MemoryIndexListEntry,
   MemoryIngestDetail,
   MemoryQueryResultItem,
-} from "@/lib/types/dashboard"
+} from "@/lib/types/dashboard";
 
-const SEMANTIC_SESSION_KEY = "openmind.memoryExplorer.semanticSessionId"
+const SEMANTIC_SESSION_KEY = "openmind.memoryExplorer.semanticSessionId";
 
 function ingestDetailSectionLabel(d: MemoryIngestDetail): string {
-  if (d.summary.includes("User prompt (auto-captured)")) return "Your prompt"
-  if (d.summary.includes("Code edit (auto-captured)")) return "Code edit"
-  if (d.summary.includes("Assistant reply (auto-captured)")) return "Assistant reply"
-  if (d.role === "user") return "User"
-  if (d.role === "assistant") return "Assistant"
-  return "Stored content"
+  if (d.summary.includes("User prompt (auto-captured)")) return "Your prompt";
+  if (d.summary.includes("Code edit (auto-captured)")) return "Code edit";
+  if (d.summary.includes("Assistant reply (auto-captured)"))
+    return "Assistant reply";
+  if (d.role === "user") return "User";
+  if (d.role === "assistant") return "Assistant";
+  return "Stored content";
 }
 
 /** Default subnet namespace is identical for most ingests — hide the noisy repeat on list cards. */
@@ -51,16 +58,18 @@ function MemoryNamespaceHint({
   sessionId,
   defaultSessionId,
 }: {
-  sessionId: string | null | undefined
-  defaultSessionId: string | null
+  sessionId: string | null | undefined;
+  defaultSessionId: string | null;
 }) {
   if (!sessionId) {
     return (
-      <p className="text-[10px] italic text-muted-foreground">Memory namespace not recorded</p>
-    )
+      <p className="text-[10px] italic text-muted-foreground">
+        Memory namespace not recorded
+      </p>
+    );
   }
   if (defaultSessionId && sessionId === defaultSessionId) {
-    return null
+    return null;
   }
   return (
     <p
@@ -69,18 +78,18 @@ function MemoryNamespaceHint({
     >
       namespace: {sessionId}
     </p>
-  )
+  );
 }
 
 function normalizeResults(data: unknown): MemoryQueryResultItem[] {
-  if (!data || typeof data !== "object") return []
-  const r = (data as { results?: unknown }).results
-  if (!Array.isArray(r)) return []
+  if (!data || typeof data !== "object") return [];
+  const r = (data as { results?: unknown }).results;
+  if (!Array.isArray(r)) return [];
   return r.map((item, i) => {
     if (!item || typeof item !== "object") {
-      return { title: `Result ${i + 1}`, body: String(item) }
+      return { title: `Result ${i + 1}`, body: String(item) };
     }
-    const o = item as Record<string, unknown>
+    const o = item as Record<string, unknown>;
     let text =
       typeof o.content === "string"
         ? o.content
@@ -88,191 +97,207 @@ function normalizeResults(data: unknown): MemoryQueryResultItem[] {
           ? o.text
           : typeof o.snippet === "string"
             ? o.snippet
-            : JSON.stringify(o)
-    const score = typeof o.score === "number" ? o.score : undefined
-    const id = typeof o.id === "string" ? o.id : typeof o.chunk_id === "string" ? o.chunk_id : `chunk-${i}`
+            : JSON.stringify(o);
+    const score = typeof o.score === "number" ? o.score : undefined;
+    const id =
+      typeof o.id === "string"
+        ? o.id
+        : typeof o.chunk_id === "string"
+          ? o.chunk_id
+          : `chunk-${i}`;
     const title =
-      score != null ? `${id} · score ${score.toFixed(2)}` : `${id} · memory hit`
-    const bodyFull = text
-    const previewLen = 400
+      score != null
+        ? `${id} · score ${score.toFixed(2)}`
+        : `${id} · memory hit`;
+    const bodyFull = text;
+    const previewLen = 400;
     const body =
-      bodyFull.length > previewLen ? `${bodyFull.slice(0, previewLen)}…` : bodyFull    
+      bodyFull.length > previewLen
+        ? `${bodyFull.slice(0, previewLen)}…`
+        : bodyFull;
     return {
       title,
       body,
       bodyFull,
       score,
       raw: o as Record<string, unknown>,
-    }
-  })
+    };
+  });
 }
 
 export function MemoryExplorerClient() {
-  const [defaultSessionId, setDefaultSessionId] = useState<string | null>(null)
-  const [sessionReady, setSessionReady] = useState(false)
+  const [defaultSessionId, setDefaultSessionId] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
 
-  const [filterText, setFilterText] = useState("")
-  const [appliedFilter, setAppliedFilter] = useState("")
-  const [sessionExact, setSessionExact] = useState("")
-  const [appliedSession, setAppliedSession] = useState("")
+  const [filterText, setFilterText] = useState("");
+  const [appliedFilter, setAppliedFilter] = useState("");
+  const [sessionExact, setSessionExact] = useState("");
+  const [appliedSession, setAppliedSession] = useState("");
 
-  const [indexItems, setIndexItems] = useState<MemoryIndexListEntry[]>([])
-  const [indexCursor, setIndexCursor] = useState<string | null>(null)
-  const [indexLoading, setIndexLoading] = useState(false)
-  const [indexError, setIndexError] = useState<string | null>(null)
+  const [indexItems, setIndexItems] = useState<MemoryIndexListEntry[]>([]);
+  const [indexCursor, setIndexCursor] = useState<string | null>(null);
+  const [indexLoading, setIndexLoading] = useState(false);
+  const [indexError, setIndexError] = useState<string | null>(null);
 
-  const [semanticOpen, setSemanticOpen] = useState(false)
-  const [semanticSession, setSemanticSession] = useState("")
-  const [semanticQuery, setSemanticQuery] = useState("")
-  const [semanticLoading, setSemanticLoading] = useState(false)
-  const [semanticError, setSemanticError] = useState<string | null>(null)
-  const [semanticResults, setSemanticResults] = useState<MemoryQueryResultItem[]>([])
-  const [semanticDetail, setSemanticDetail] = useState<MemoryQueryResultItem | null>(null)
+  const [semanticOpen, setSemanticOpen] = useState(false);
+  const [semanticSession, setSemanticSession] = useState("");
+  const [semanticQuery, setSemanticQuery] = useState("");
+  const [semanticLoading, setSemanticLoading] = useState(false);
+  const [semanticError, setSemanticError] = useState<string | null>(null);
+  const [semanticResults, setSemanticResults] = useState<
+    MemoryQueryResultItem[]
+  >([]);
+  const [semanticDetail, setSemanticDetail] =
+    useState<MemoryQueryResultItem | null>(null);
 
   const [ingestOpen, setIngestOpen] = useState<
     | null
     | { kind: "single"; id: string }
     | { kind: "turn"; userId: string; assistantId: string }
     | { kind: "thread"; ids: string[] }
-  >(null)
+  >(null);
   const [ingestDetailSingle, setIngestDetailSingle] =
-    useState<MemoryIngestDetail | null>(null)
+    useState<MemoryIngestDetail | null>(null);
   const [ingestDetailTurn, setIngestDetailTurn] = useState<{
-    user: MemoryIngestDetail
-    assistant: MemoryIngestDetail
-  } | null>(null)
+    user: MemoryIngestDetail;
+    assistant: MemoryIngestDetail;
+  } | null>(null);
   const [ingestDetailThread, setIngestDetailThread] = useState<
     MemoryIngestDetail[] | null
-  >(null)
-  const [ingestDetailLoading, setIngestDetailLoading] = useState(false)
-  const [ingestFocusId, setIngestFocusId] = useState<string | null>(null)
+  >(null);
+  const [ingestDetailLoading, setIngestDetailLoading] = useState(false);
+  const [ingestFocusId, setIngestFocusId] = useState<string | null>(null);
 
   const selectIngestGraphNode = useCallback((id: string) => {
-    setIngestFocusId(id)
+    setIngestFocusId(id);
     requestAnimationFrame(() => {
       document
         .getElementById(`ingest-detail-${id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-    })
-  }, [])
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     void (async () => {
       try {
-        const res = await apiFetch("/api/me")
+        const res = await apiFetch("/api/me");
         const data = (await res.json().catch(() => ({}))) as {
-          defaultMemorySessionId?: string
-        }
-        if (cancelled || !res.ok) return
-        const fromApi = data.defaultMemorySessionId ?? ""
-        setDefaultSessionId(fromApi || null)
+          defaultMemorySessionId?: string;
+        };
+        if (cancelled || !res.ok) return;
+        const fromApi = data.defaultMemorySessionId ?? "";
+        setDefaultSessionId(fromApi || null);
         if (typeof window !== "undefined") {
-          const saved = window.localStorage.getItem(SEMANTIC_SESSION_KEY)?.trim()
-          setSemanticSession(saved || fromApi)
+          const saved = window.localStorage
+            .getItem(SEMANTIC_SESSION_KEY)
+            ?.trim();
+          setSemanticSession(saved || fromApi);
         } else {
-          setSemanticSession(fromApi)
+          setSemanticSession(fromApi);
         }
       } finally {
-        if (!cancelled) setSessionReady(true)
+        if (!cancelled) setSessionReady(true);
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   function persistSemanticSession(next: string) {
-    setSemanticSession(next)
-    if (typeof window === "undefined") return
-    const t = next.trim()
+    setSemanticSession(next);
+    if (typeof window === "undefined") return;
+    const t = next.trim();
     if (!t) {
-      window.localStorage.removeItem(SEMANTIC_SESSION_KEY)
-      return
+      window.localStorage.removeItem(SEMANTIC_SESSION_KEY);
+      return;
     }
     if (defaultSessionId && t === defaultSessionId) {
-      window.localStorage.removeItem(SEMANTIC_SESSION_KEY)
-      return
+      window.localStorage.removeItem(SEMANTIC_SESSION_KEY);
+      return;
     }
-    window.localStorage.setItem(SEMANTIC_SESSION_KEY, t)
+    window.localStorage.setItem(SEMANTIC_SESSION_KEY, t);
   }
 
   const fetchIndexPage = useCallback(
     async (cursor: string | null, append: boolean) => {
-      setIndexLoading(true)
-      setIndexError(null)
+      setIndexLoading(true);
+      setIndexError(null);
       try {
-        const params = new URLSearchParams()
-        params.set("limit", "40")
-        if (cursor) params.set("cursor", cursor)
-        if (appliedFilter.trim()) params.set("q", appliedFilter.trim())
-        if (appliedSession.trim()) params.set("session", appliedSession.trim())
+        const params = new URLSearchParams();
+        params.set("limit", "40");
+        if (cursor) params.set("cursor", cursor);
+        if (appliedFilter.trim()) params.set("q", appliedFilter.trim());
+        if (appliedSession.trim()) params.set("session", appliedSession.trim());
 
-        const res = await apiFetch(`/api/dashboard/memory-index?${params.toString()}`)
+        const res = await apiFetch(
+          `/api/dashboard/memory-index?${params.toString()}`,
+        );
         const data = (await res.json().catch(() => ({}))) as {
-          items?: MemoryIndexListEntry[]
-          nextCursor?: string | null
-          error?: string
-        }
+          items?: MemoryIndexListEntry[];
+          nextCursor?: string | null;
+          error?: string;
+        };
 
         if (!res.ok) {
-          setIndexError(data.error ?? "Could not load memories.")
-          if (!append) setIndexItems([])
-          return
+          setIndexError(data.error ?? "Could not load memories.");
+          if (!append) setIndexItems([]);
+          return;
         }
 
-        const items = data.items ?? []
-        setIndexCursor(data.nextCursor ?? null)
-        setIndexItems((prev) => (append ? [...prev, ...items] : items))
+        const items = data.items ?? [];
+        setIndexCursor(data.nextCursor ?? null);
+        setIndexItems((prev) => (append ? [...prev, ...items] : items));
       } catch {
-        setIndexError("Network error.")
-        if (!append) setIndexItems([])
+        setIndexError("Network error.");
+        if (!append) setIndexItems([]);
       } finally {
-        setIndexLoading(false)
+        setIndexLoading(false);
       }
     },
     [appliedFilter, appliedSession],
-  )
+  );
 
   useEffect(() => {
-    if (!sessionReady) return
-    void fetchIndexPage(null, false)
-  }, [sessionReady, appliedFilter, appliedSession, fetchIndexPage])
+    if (!sessionReady) return;
+    void fetchIndexPage(null, false);
+  }, [sessionReady, appliedFilter, appliedSession, fetchIndexPage]);
 
   useEffect(() => {
     if (!ingestOpen) {
-      setIngestFocusId(null)
-      return
+      setIngestFocusId(null);
+      return;
     }
     if (ingestOpen.kind === "single" && ingestDetailSingle) {
-      setIngestFocusId(ingestDetailSingle.id)
+      setIngestFocusId(ingestDetailSingle.id);
     } else if (ingestOpen.kind === "turn" && ingestDetailTurn) {
-      setIngestFocusId(ingestDetailTurn.user.id)
+      setIngestFocusId(ingestDetailTurn.user.id);
     } else if (ingestOpen.kind === "thread" && ingestDetailThread?.length) {
-      setIngestFocusId(ingestDetailThread[0].id)
+      setIngestFocusId(ingestDetailThread[0].id);
     }
-  }, [ingestOpen, ingestDetailSingle, ingestDetailTurn, ingestDetailThread])
+  }, [ingestOpen, ingestDetailSingle, ingestDetailTurn, ingestDetailThread]);
 
   function applyFilters() {
-    setAppliedFilter(filterText.trim())
-    setAppliedSession(sessionExact.trim())
+    setAppliedFilter(filterText.trim());
+    setAppliedSession(sessionExact.trim());
   }
 
   async function loadMore() {
-    if (!indexCursor || indexLoading) return
-    await fetchIndexPage(indexCursor, true)
+    if (!indexCursor || indexLoading) return;
+    await fetchIndexPage(indexCursor, true);
   }
 
   async function runSemanticSearch() {
-    const q = semanticQuery.trim()
+    const q = semanticQuery.trim();
     if (!q) {
-      setSemanticError("Enter a question or keywords for subnet search.")
-      return
+      setSemanticError("Enter a question or keywords for subnet search.");
+      return;
     }
-    setSemanticLoading(true)
-    setSemanticError(null)
+    setSemanticLoading(true);
+    setSemanticError(null);
     try {
-      const sid = semanticSession.trim() || defaultSessionId || ""
+      const sid = semanticSession.trim() || defaultSessionId || "";
       const res = await apiFetch("/api/gateway/memory/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -281,91 +306,103 @@ export function MemoryExplorerClient() {
           top_k: 12,
           ...(sid ? { session_id: sid } : {}),
         }),
-      })
-      const data = await res.json().catch(() => ({}))
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = (data as { error?: string }).error
+        const err = (data as { error?: string }).error;
         setSemanticError(
           err ??
             (res.status === 503
               ? "Subnet gateway is not configured (SUBNET_GATEWAY_URL)."
               : "Search failed."),
-        )
-        setSemanticResults([])
-        return
+        );
+        setSemanticResults([]);
+        return;
       }
-      const list = normalizeResults(data)
-      setSemanticResults(list)
+      const list = normalizeResults(data);
+      setSemanticResults(list);
       if (list.length === 0) {
         setSemanticError(
           "No semantic hits in this session. Try another session, or browse ingests above.",
-        )
+        );
       }
     } catch {
-      setSemanticError("Network error.")
-      setSemanticResults([])
+      setSemanticError("Network error.");
+      setSemanticResults([]);
     } finally {
-      setSemanticLoading(false)
+      setSemanticLoading(false);
     }
   }
 
   async function openIngest(entry: MemoryIndexListEntry) {
-    setIngestDetailSingle(null)
-    setIngestDetailTurn(null)
-    setIngestDetailThread(null)
-    setIngestDetailLoading(true)
+    setIngestDetailSingle(null);
+    setIngestDetailTurn(null);
+    setIngestDetailThread(null);
+    setIngestDetailLoading(true);
 
     if (entry.kind === "thread") {
-      setIngestOpen({ kind: "thread", ids: entry.members.map((m) => m.id) })
+      setIngestOpen({ kind: "thread", ids: entry.members.map((m) => m.id) });
       try {
         const responses = await Promise.all(
-          entry.members.map((m) => apiFetch(`/api/dashboard/memory-index/${m.id}`)),
-        )
-        const details: MemoryIngestDetail[] = []
+          entry.members.map((m) =>
+            apiFetch(`/api/dashboard/memory-index/${m.id}`),
+          ),
+        );
+        const details: MemoryIngestDetail[] = [];
         for (const res of responses) {
-          const data = (await res.json().catch(() => ({}))) as MemoryIngestDetail
-          if (res.ok) details.push(data)
+          const data = (await res
+            .json()
+            .catch(() => ({}))) as MemoryIngestDetail;
+          if (res.ok) details.push(data);
         }
-        setIngestDetailThread(details.length > 0 ? details : null)
+        setIngestDetailThread(details.length > 0 ? details : null);
       } finally {
-        setIngestDetailLoading(false)
+        setIngestDetailLoading(false);
       }
-      return
+      return;
     }
 
     if (entry.kind === "single") {
-      setIngestOpen({ kind: "single", id: entry.item.id })
+      setIngestOpen({ kind: "single", id: entry.item.id });
       try {
-        const res = await apiFetch(`/api/dashboard/memory-index/${entry.item.id}`)
-        const data = (await res.json().catch(() => ({}))) as MemoryIngestDetail & {
-          error?: string
-        }
-        if (res.ok) setIngestDetailSingle(data)
+        const res = await apiFetch(
+          `/api/dashboard/memory-index/${entry.item.id}`,
+        );
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as MemoryIngestDetail & {
+          error?: string;
+        };
+        if (res.ok) setIngestDetailSingle(data);
       } finally {
-        setIngestDetailLoading(false)
+        setIngestDetailLoading(false);
       }
-      return
+      return;
     }
 
     setIngestOpen({
       kind: "turn",
       userId: entry.user.id,
       assistantId: entry.assistant.id,
-    })
+    });
     try {
       const [ru, ra] = await Promise.all([
         apiFetch(`/api/dashboard/memory-index/${entry.user.id}`),
         apiFetch(`/api/dashboard/memory-index/${entry.assistant.id}`),
-      ])
-      const du = (await ru.json().catch(() => ({}))) as MemoryIngestDetail & { error?: string }
-      const da = (await ra.json().catch(() => ({}))) as MemoryIngestDetail & { error?: string }
+      ]);
+      const du = (await ru.json().catch(() => ({}))) as MemoryIngestDetail & {
+        error?: string;
+      };
+      const da = (await ra.json().catch(() => ({}))) as MemoryIngestDetail & {
+        error?: string;
+      };
       if (ru.ok && ra.ok) {
-        setIngestDetailTurn({ user: du, assistant: da })
+        setIngestDetailTurn({ user: du, assistant: da });
       } else {
-        setIngestDetailTurn(null)
+        setIngestDetailTurn(null);
       }
     } finally {
-      setIngestDetailLoading(false)
+      setIngestDetailLoading(false);
     }
   }
 
@@ -379,12 +416,15 @@ export function MemoryExplorerClient() {
       <section className="mb-8 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Database className="size-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold tracking-tight">All stored memories</h2>
+          <h2 className="text-sm font-semibold tracking-tight">
+            All stored memories
+          </h2>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Ingests from your activity log. Composer steps group prompt, file edits, and reply.
-          Open a card for a knowledge-flow graph and jump between linked parts. Your default memory
-          namespace is the same for most rows, so list cards hide that id.
+          Ingests from your activity log. Composer steps group prompt, file
+          edits, and reply. Open a card for a knowledge-flow graph and jump
+          between linked parts. Your default memory namespace is the same for
+          most rows, so list cards hide that id.
         </p>
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="relative min-w-0 flex-1">
@@ -395,7 +435,7 @@ export function MemoryExplorerClient() {
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") applyFilters()
+                if (e.key === "Enter") applyFilters();
               }}
               disabled={!sessionReady}
             />
@@ -406,7 +446,7 @@ export function MemoryExplorerClient() {
             value={sessionExact}
             onChange={(e) => setSessionExact(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") applyFilters()
+              if (e.key === "Enter") applyFilters();
             }}
             disabled={!sessionReady}
           />
@@ -436,8 +476,8 @@ export function MemoryExplorerClient() {
                 size="sm"
                 className="h-10 rounded-full"
                 onClick={() => {
-                  setSessionExact(defaultSessionId)
-                  setAppliedSession(defaultSessionId)
+                  setSessionExact(defaultSessionId);
+                  setAppliedSession(defaultSessionId);
                 }}
                 disabled={!sessionReady}
               >
@@ -456,23 +496,27 @@ export function MemoryExplorerClient() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {indexItems.map((entry) => {
             if (entry.kind === "turn") {
-              const { user, assistant } = entry
-              const tUser = new Date(user.createdAt).getTime()
-              const tAsst = new Date(assistant.createdAt).getTime()
+              const { user, assistant } = entry;
+              const tUser = new Date(user.createdAt).getTime();
+              const tAsst = new Date(assistant.createdAt).getTime();
               const timeLabel =
                 tUser === tAsst
                   ? new Date(assistant.createdAt).toLocaleString()
-                  : `${new Date(user.createdAt).toLocaleString()} → ${new Date(assistant.createdAt).toLocaleString()}`
+                  : `${new Date(user.createdAt).toLocaleString()} → ${new Date(assistant.createdAt).toLocaleString()}`;
               const fullText =
                 user.hasStoredContent && assistant.hasStoredContent ? (
-                  <span className="ml-2 text-emerald-600 dark:text-emerald-400">· full text</span>
+                  <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                    · full text
+                  </span>
                 ) : (
-                  <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">· preview</span>
-                )
+                  <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">
+                    · preview
+                  </span>
+                );
               const gwBad =
                 user.gatewayOk === false || assistant.gatewayOk === false ? (
                   <span className="ml-2 text-destructive">· gateway issue</span>
-                ) : null
+                ) : null;
               return (
                 <Card
                   key={`turn-${user.id}-${assistant.id}`}
@@ -482,8 +526,8 @@ export function MemoryExplorerClient() {
                   onClick={() => void openIngest(entry)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      void openIngest(entry)
+                      e.preventDefault();
+                      void openIngest(entry);
                     }
                   }}
                 >
@@ -519,28 +563,30 @@ export function MemoryExplorerClient() {
                     </span>
                   </CardContent>
                 </Card>
-              )
+              );
             }
 
             if (entry.kind === "thread") {
-              const { members, generationId, conversationId } = entry
-              const first = members[0]
-              const last = members[members.length - 1]
-              const tA = new Date(first.createdAt).getTime()
-              const tB = new Date(last.createdAt).getTime()
+              const { members, generationId, conversationId } = entry;
+              const first = members[0];
+              const last = members[members.length - 1];
+              const tA = new Date(first.createdAt).getTime();
+              const tB = new Date(last.createdAt).getTime();
               const timeLabel =
                 tA === tB
                   ? new Date(last.createdAt).toLocaleString()
-                  : `${new Date(first.createdAt).toLocaleString()} → ${new Date(last.createdAt).toLocaleString()}`
-              const userLine = members.find((m) => m.summary.includes("User prompt (auto-captured)"))
+                  : `${new Date(first.createdAt).toLocaleString()} → ${new Date(last.createdAt).toLocaleString()}`;
+              const userLine = members.find((m) =>
+                m.summary.includes("User prompt (auto-captured)"),
+              );
               const codeN = members.filter((m) =>
                 m.summary.includes("Code edit (auto-captured)"),
-              ).length
+              ).length;
               const asstLine = members.find((m) =>
                 m.summary.includes("Assistant reply (auto-captured)"),
-              )
-              const anyGwBad = members.some((m) => m.gatewayOk === false)
-              const allFull = members.every((m) => m.hasStoredContent)
+              );
+              const anyGwBad = members.some((m) => m.gatewayOk === false);
+              const allFull = members.every((m) => m.hasStoredContent);
 
               return (
                 <Card
@@ -551,8 +597,8 @@ export function MemoryExplorerClient() {
                   onClick={() => void openIngest(entry)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      void openIngest(entry)
+                      e.preventDefault();
+                      void openIngest(entry);
                     }
                   }}
                 >
@@ -560,12 +606,18 @@ export function MemoryExplorerClient() {
                     <CardTitle className="text-[11px] font-normal text-muted-foreground">
                       {timeLabel}
                       {anyGwBad ? (
-                        <span className="ml-2 text-destructive">· gateway issue</span>
+                        <span className="ml-2 text-destructive">
+                          · gateway issue
+                        </span>
                       ) : null}
                       {allFull ? (
-                        <span className="ml-2 text-emerald-600 dark:text-emerald-400">· full text</span>
+                        <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                          · full text
+                        </span>
                       ) : (
-                        <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">· preview</span>
+                        <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">
+                          · preview
+                        </span>
                       )}
                     </CardTitle>
                     <MemoryNamespaceHint
@@ -574,7 +626,10 @@ export function MemoryExplorerClient() {
                     />
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Composer step · {members.length} parts
-                      {codeN ? ` · ${codeN} edit${codeN === 1 ? "" : "s"}` : ""} · graph inside
+                      {codeN
+                        ? ` · ${codeN} edit${codeN === 1 ? "" : "s"}`
+                        : ""}{" "}
+                      · graph inside
                     </p>
                     <p
                       className="font-mono text-[10px] text-muted-foreground/90"
@@ -594,7 +649,8 @@ export function MemoryExplorerClient() {
                     ) : null}
                     {codeN > 0 ? (
                       <p className="text-xs italic text-muted-foreground">
-                        {codeN} code edit ingest{codeN === 1 ? "" : "s"} (see details)
+                        {codeN} code edit ingest{codeN === 1 ? "" : "s"} (see
+                        details)
                       </p>
                     ) : null}
                     {asstLine ? (
@@ -610,10 +666,10 @@ export function MemoryExplorerClient() {
                     </span>
                   </CardContent>
                 </Card>
-              )
+              );
             }
 
-            const row = entry.item
+            const row = entry.item;
             return (
               <Card
                 key={row.id}
@@ -623,8 +679,8 @@ export function MemoryExplorerClient() {
                 onClick={() => void openIngest(entry)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    void openIngest(entry)
+                    e.preventDefault();
+                    void openIngest(entry);
                   }
                 }}
               >
@@ -632,15 +688,24 @@ export function MemoryExplorerClient() {
                   <CardTitle className="text-[11px] font-normal text-muted-foreground">
                     {new Date(row.createdAt).toLocaleString()}
                     {row.gatewayOk === false ? (
-                      <span className="ml-2 text-destructive">· gateway issue</span>
+                      <span className="ml-2 text-destructive">
+                        · gateway issue
+                      </span>
                     ) : null}
                     {row.hasStoredContent ? (
-                      <span className="ml-2 text-emerald-600 dark:text-emerald-400">· full text</span>
+                      <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                        · full text
+                      </span>
                     ) : (
-                      <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">· preview</span>
+                      <span className="ml-2 text-amber-600/90 dark:text-amber-400/90">
+                        · preview
+                      </span>
                     )}
                   </CardTitle>
-                  <MemoryNamespaceHint sessionId={row.sessionId} defaultSessionId={defaultSessionId} />
+                  <MemoryNamespaceHint
+                    sessionId={row.sessionId}
+                    defaultSessionId={defaultSessionId}
+                  />
                   {row.role ? (
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       role: {row.role}
@@ -654,13 +719,14 @@ export function MemoryExplorerClient() {
                   </span>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
 
         {!indexLoading && indexItems.length === 0 && !indexError && (
           <p className="text-sm text-muted-foreground">
-            No ingests match these filters yet. Store via MCP or the API, then refresh.
+            No ingests match these filters yet. Store via MCP or the API, then
+            refresh.
           </p>
         )}
 
@@ -691,7 +757,9 @@ export function MemoryExplorerClient() {
             variant="ghost"
             className="mb-4 h-auto w-full justify-between rounded-lg border border-foreground/10 px-4 py-3 text-left font-normal hover:bg-muted/40"
           >
-            <span className="text-sm font-medium">Semantic search (subnet miners)</span>
+            <span className="text-sm font-medium">
+              Semantic search (subnet miners)
+            </span>
             <ChevronDown
               className={`size-4 shrink-0 transition-transform ${semanticOpen ? "rotate-180" : ""}`}
             />
@@ -700,7 +768,8 @@ export function MemoryExplorerClient() {
         <CollapsibleContent className="space-y-4 pb-8">
           <p className="text-xs text-muted-foreground leading-relaxed">
             Runs POST /v1/memory/query on your validator. Scoped to one{" "}
-            <span className="font-mono">session_id</span> — set below or use your dashboard default.
+            <span className="font-mono">session_id</span> — set below or use
+            your dashboard default.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="relative min-w-0 flex-1">
@@ -710,7 +779,7 @@ export function MemoryExplorerClient() {
                 value={semanticQuery}
                 onChange={(e) => setSemanticQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void runSemanticSearch()
+                  if (e.key === "Enter") void runSemanticSearch();
                 }}
                 disabled={!sessionReady}
               />
@@ -744,7 +813,9 @@ export function MemoryExplorerClient() {
               variant="outline"
               size="sm"
               className="rounded-full"
-              onClick={() => defaultSessionId && persistSemanticSession(defaultSessionId)}
+              onClick={() =>
+                defaultSessionId && persistSemanticSession(defaultSessionId)
+              }
               disabled={!sessionReady}
             >
               Use dashboard default session
@@ -765,8 +836,8 @@ export function MemoryExplorerClient() {
                 onClick={() => setSemanticDetail(c)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    setSemanticDetail(c)
+                    e.preventDefault();
+                    setSemanticDetail(c);
                   }
                 }}
               >
@@ -791,10 +862,10 @@ export function MemoryExplorerClient() {
         open={ingestOpen !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setIngestOpen(null)
-            setIngestDetailSingle(null)
-            setIngestDetailTurn(null)
-            setIngestDetailThread(null)
+            setIngestOpen(null);
+            setIngestDetailSingle(null);
+            setIngestDetailTurn(null);
+            setIngestDetailThread(null);
           }
         }}
       >
@@ -846,18 +917,24 @@ export function MemoryExplorerClient() {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] leading-relaxed">
                       <p className="break-all font-mono text-muted-foreground">
-                        <span className="text-muted-foreground/80">session_id · </span>
+                        <span className="text-muted-foreground/80">
+                          session_id ·{" "}
+                        </span>
                         {ingestDetailThread[0]?.sessionId ?? "—"}
                       </p>
                       {ingestDetailThread[0]?.cursorGenerationId ? (
                         <p className="break-all font-mono text-muted-foreground">
-                          <span className="text-muted-foreground/80">generation · </span>
+                          <span className="text-muted-foreground/80">
+                            generation ·{" "}
+                          </span>
                           {ingestDetailThread[0].cursorGenerationId}
                         </p>
                       ) : null}
                       {ingestDetailThread[0]?.cursorConversationId ? (
                         <p className="break-all font-mono text-muted-foreground">
-                          <span className="text-muted-foreground/80">conversation · </span>
+                          <span className="text-muted-foreground/80">
+                            conversation ·{" "}
+                          </span>
                           {ingestDetailThread[0].cursorConversationId}
                         </p>
                       ) : null}
@@ -897,14 +974,19 @@ export function MemoryExplorerClient() {
                             {ingestDetail.gatewayStatus != null
                               ? ` · HTTP ${ingestDetail.gatewayStatus}`
                               : ""}
-                            {ingestDetail.latencyMs != null ? ` · ${ingestDetail.latencyMs} ms` : ""}
+                            {ingestDetail.latencyMs != null
+                              ? ` · ${ingestDetail.latencyMs} ms`
+                              : ""}
                           </dd>
                         </div>
                         {ingestDetail.contentLength != null ? (
                           <div>
-                            <dt className="text-muted-foreground">Original length</dt>
+                            <dt className="text-muted-foreground">
+                              Original length
+                            </dt>
                             <dd className="text-foreground">
-                              {ingestDetail.contentLength.toLocaleString()} chars
+                              {ingestDetail.contentLength.toLocaleString()}{" "}
+                              chars
                               {ingestDetail.contentTruncated
                                 ? " (dashboard cap applied — see below)"
                                 : ""}
@@ -924,11 +1006,13 @@ export function MemoryExplorerClient() {
                         </p>
                         <div className="max-h-64 overflow-y-auto rounded-md border border-foreground/10 p-3 text-xs">
                           {ingestDetail.storedContent ? (
-                            <MemoryMarkdown source={ingestDetail.storedContent} />
+                            <MemoryMarkdown
+                              source={ingestDetail.storedContent}
+                            />
                           ) : (
                             <p className="italic text-muted-foreground">
-                              No full text was saved for this event. Only the summary above is
-                              available.
+                              No full text was saved for this event. Only the
+                              summary above is available.
                             </p>
                           )}
                         </div>
@@ -941,7 +1025,10 @@ export function MemoryExplorerClient() {
               <ScrollArea className="h-[calc(100vh-8rem)] pr-3">
                 <div className="flex flex-col gap-6 pb-6">
                   <MemoryIngestKnowledgeGraph
-                    details={[ingestDetailTurn.user, ingestDetailTurn.assistant]}
+                    details={[
+                      ingestDetailTurn.user,
+                      ingestDetailTurn.assistant,
+                    ]}
                     selectedId={ingestFocusId}
                     onSelect={selectIngestGraphNode}
                   />
@@ -959,13 +1046,16 @@ export function MemoryExplorerClient() {
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
                       {ingestDetailTurn.user.sessionId ? (
-                        <p className="break-all">session_id · {ingestDetailTurn.user.sessionId}</p>
+                        <p className="break-all">
+                          session_id · {ingestDetailTurn.user.sessionId}
+                        </p>
                       ) : null}
                     </CollapsibleContent>
                   </Collapsible>
                   {(["user", "assistant"] as const).map((side) => {
-                    const ingestDetail = ingestDetailTurn[side]
-                    const label = side === "user" ? "Your prompt" : "Assistant reply"
+                    const ingestDetail = ingestDetailTurn[side];
+                    const label =
+                      side === "user" ? "Your prompt" : "Assistant reply";
                     return (
                       <div
                         key={ingestDetail.id}
@@ -983,7 +1073,9 @@ export function MemoryExplorerClient() {
                           <div>
                             <dt className="text-muted-foreground">Time</dt>
                             <dd className="font-mono text-foreground">
-                              {new Date(ingestDetail.createdAt).toLocaleString()}
+                              {new Date(
+                                ingestDetail.createdAt,
+                              ).toLocaleString()}
                             </dd>
                           </div>
                           <div>
@@ -1004,9 +1096,12 @@ export function MemoryExplorerClient() {
                           </div>
                           {ingestDetail.contentLength != null ? (
                             <div>
-                              <dt className="text-muted-foreground">Original length</dt>
+                              <dt className="text-muted-foreground">
+                                Original length
+                              </dt>
                               <dd className="text-foreground">
-                                {ingestDetail.contentLength.toLocaleString()} chars
+                                {ingestDetail.contentLength.toLocaleString()}{" "}
+                                chars
                                 {ingestDetail.contentTruncated
                                   ? " (dashboard cap applied — see below)"
                                   : ""}
@@ -1026,17 +1121,19 @@ export function MemoryExplorerClient() {
                           </p>
                           <div className="max-h-64 overflow-y-auto rounded-md border border-foreground/10 p-3 text-xs">
                             {ingestDetail.storedContent ? (
-                              <MemoryMarkdown source={ingestDetail.storedContent} />
+                              <MemoryMarkdown
+                                source={ingestDetail.storedContent}
+                              />
                             ) : (
                               <p className="italic text-muted-foreground">
-                                No full text was saved for this event. Only the summary above is
-                                available.
+                                No full text was saved for this event. Only the
+                                summary above is available.
                               </p>
                             )}
                           </div>
                         </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </ScrollArea>
@@ -1061,10 +1158,14 @@ export function MemoryExplorerClient() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-foreground/10 bg-muted/25 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
                     {ingestDetailSingle.sessionId ? (
-                      <p className="break-all">session_id · {ingestDetailSingle.sessionId}</p>
+                      <p className="break-all">
+                        session_id · {ingestDetailSingle.sessionId}
+                      </p>
                     ) : null}
                     {ingestDetailSingle.cursorGenerationId ? (
-                      <p className="break-all">generation · {ingestDetailSingle.cursorGenerationId}</p>
+                      <p className="break-all">
+                        generation · {ingestDetailSingle.cursorGenerationId}
+                      </p>
                     ) : null}
                   </CollapsibleContent>
                 </Collapsible>
@@ -1072,91 +1173,106 @@ export function MemoryExplorerClient() {
                   id={`ingest-detail-${ingestDetailSingle.id}`}
                   className={cn(
                     "flex min-h-0 flex-1 flex-col gap-3 rounded-lg border border-transparent p-1 transition-colors",
-                    ingestFocusId === ingestDetailSingle.id && "border-primary/20 bg-primary/4",
+                    ingestFocusId === ingestDetailSingle.id &&
+                      "border-primary/20 bg-primary/4",
                   )}
                 >
-                <dl className="grid gap-2 text-xs">
-                  <div>
-                    <dt className="text-muted-foreground">Time</dt>
-                    <dd className="font-mono text-foreground">
-                      {new Date(ingestDetailSingle.createdAt).toLocaleString()}
-                    </dd>
-                  </div>
-                  {ingestDetailSingle.role ? (
+                  <dl className="grid gap-2 text-xs">
                     <div>
-                      <dt className="text-muted-foreground">role</dt>
-                      <dd className="text-foreground">{ingestDetailSingle.role}</dd>
-                    </div>
-                  ) : null}
-                  {ingestDetailSingle.filename ? (
-                    <div>
-                      <dt className="text-muted-foreground">file</dt>
-                      <dd className="break-all text-foreground">{ingestDetailSingle.filename}</dd>
-                    </div>
-                  ) : null}
-                  {ingestDetailSingle.assetId ? (
-                    <div>
-                      <dt className="text-muted-foreground">asset id</dt>
-                      <dd className="break-all font-mono text-foreground">
-                        {ingestDetailSingle.assetId}
+                      <dt className="text-muted-foreground">Time</dt>
+                      <dd className="font-mono text-foreground">
+                        {new Date(
+                          ingestDetailSingle.createdAt,
+                        ).toLocaleString()}
                       </dd>
                     </div>
-                  ) : null}
-                  <div>
-                    <dt className="text-muted-foreground">Gateway</dt>
-                    <dd className="text-foreground">
-                      {ingestDetailSingle.gatewayOk === false
-                        ? "error"
-                        : ingestDetailSingle.gatewayOk === true
-                          ? "ok"
-                          : "—"}
-                      {ingestDetailSingle.gatewayStatus != null
-                        ? ` · HTTP ${ingestDetailSingle.gatewayStatus}`
-                        : ""}
-                      {ingestDetailSingle.latencyMs != null
-                        ? ` · ${ingestDetailSingle.latencyMs} ms`
-                        : ""}
-                    </dd>
-                  </div>
-                  {ingestDetailSingle.contentLength != null ? (
+                    {ingestDetailSingle.role ? (
+                      <div>
+                        <dt className="text-muted-foreground">role</dt>
+                        <dd className="text-foreground">
+                          {ingestDetailSingle.role}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {ingestDetailSingle.filename ? (
+                      <div>
+                        <dt className="text-muted-foreground">file</dt>
+                        <dd className="break-all text-foreground">
+                          {ingestDetailSingle.filename}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {ingestDetailSingle.assetId ? (
+                      <div>
+                        <dt className="text-muted-foreground">asset id</dt>
+                        <dd className="break-all font-mono text-foreground">
+                          {ingestDetailSingle.assetId}
+                        </dd>
+                      </div>
+                    ) : null}
                     <div>
-                      <dt className="text-muted-foreground">Original length</dt>
+                      <dt className="text-muted-foreground">Gateway</dt>
                       <dd className="text-foreground">
-                        {ingestDetailSingle.contentLength.toLocaleString()} chars
-                        {ingestDetailSingle.contentTruncated
-                          ? " (dashboard cap applied — see below)"
+                        {ingestDetailSingle.gatewayOk === false
+                          ? "error"
+                          : ingestDetailSingle.gatewayOk === true
+                            ? "ok"
+                            : "—"}
+                        {ingestDetailSingle.gatewayStatus != null
+                          ? ` · HTTP ${ingestDetailSingle.gatewayStatus}`
+                          : ""}
+                        {ingestDetailSingle.latencyMs != null
+                          ? ` · ${ingestDetailSingle.latencyMs} ms`
                           : ""}
                       </dd>
                     </div>
-                  ) : null}
-                </dl>
-                <div className="min-h-0 flex-1">
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Summary (list preview)
-                  </p>
-                  <p className="mb-3 text-sm text-muted-foreground whitespace-pre-wrap">
-                    {ingestDetailSingle.summary}
-                  </p>
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Full stored content (Markdown)
-                  </p>
-                  <ScrollArea className="h-[min(60vh,520px)] rounded-md border border-foreground/10">
-                    <div className="p-3 text-xs">
-                      {ingestDetailSingle.storedContent ? (
-                        <MemoryMarkdown source={ingestDetailSingle.storedContent} />
-                      ) : (
-                        <p className="italic text-muted-foreground">
-                          No full text was saved for this event (ingest before this feature, or
-                          non-text upload). Only the summary above is available.
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
+                    {ingestDetailSingle.contentLength != null ? (
+                      <div>
+                        <dt className="text-muted-foreground">
+                          Original length
+                        </dt>
+                        <dd className="text-foreground">
+                          {ingestDetailSingle.contentLength.toLocaleString()}{" "}
+                          chars
+                          {ingestDetailSingle.contentTruncated
+                            ? " (dashboard cap applied — see below)"
+                            : ""}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  <div className="min-h-0 flex-1">
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Summary (list preview)
+                    </p>
+                    <p className="mb-3 text-sm text-muted-foreground whitespace-pre-wrap">
+                      {ingestDetailSingle.summary}
+                    </p>
+                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Full stored content (Markdown)
+                    </p>
+                    <ScrollArea className="h-[min(60vh,520px)] rounded-md border border-foreground/10">
+                      <div className="p-3 text-xs">
+                        {ingestDetailSingle.storedContent ? (
+                          <MemoryMarkdown
+                            source={ingestDetailSingle.storedContent}
+                          />
+                        ) : (
+                          <p className="italic text-muted-foreground">
+                            No full text was saved for this event (ingest before
+                            this feature, or non-text upload). Only the summary
+                            above is available.
+                          </p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-destructive">Could not load this ingest.</p>
+              <p className="text-sm text-destructive">
+                Could not load this ingest.
+              </p>
             )}
           </div>
         </SheetContent>
@@ -1165,7 +1281,7 @@ export function MemoryExplorerClient() {
       <Dialog
         open={semanticDetail !== null}
         onOpenChange={(open) => {
-          if (!open) setSemanticDetail(null)
+          if (!open) setSemanticDetail(null);
         }}
       >
         <DialogContent className="max-h-[85vh] max-w-2xl gap-0 overflow-hidden p-0">
@@ -1181,16 +1297,23 @@ export function MemoryExplorerClient() {
                   Text (Markdown when applicable)
                 </p>
                 <div className="text-sm">
-                  {(semanticDetail?.bodyFull ?? semanticDetail?.body ?? "").trim() ? (
+                  {(
+                    semanticDetail?.bodyFull ??
+                    semanticDetail?.body ??
+                    ""
+                  ).trim() ? (
                     <MemoryMarkdown
-                      source={semanticDetail?.bodyFull ?? semanticDetail?.body ?? ""}
+                      source={
+                        semanticDetail?.bodyFull ?? semanticDetail?.body ?? ""
+                      }
                     />
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </div>
               </div>
-              {semanticDetail?.raw && Object.keys(semanticDetail.raw).length > 0 ? (
+              {semanticDetail?.raw &&
+              Object.keys(semanticDetail.raw).length > 0 ? (
                 <div>
                   <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     Raw fields
@@ -1205,5 +1328,5 @@ export function MemoryExplorerClient() {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

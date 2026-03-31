@@ -48,7 +48,7 @@ export function DurabilityClient() {
     <>
       <DashboardPageIntro
         title="Durability & Storage"
-        description="Coverage blends stored chunk stats with recent activity; repair reflects gateway reachability."
+        description="Coverage comes from validator challenge outcomes and reflects live subnet durability telemetry."
       />
       {loading || !data ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -74,15 +74,13 @@ export function DurabilityClient() {
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">{data.summary.meta}</p>
               <Progress value={data.summary.coveragePercent} className="h-2" />
-              <p className="font-mono text-xs text-muted-foreground">
-                Coverage {data.summary.coveragePercent}% · heuristic
-              </p>
+              <p className="font-mono text-xs text-muted-foreground">Coverage {data.summary.coveragePercent}%</p>
             </CardContent>
           </Card>
           <Card className="border-foreground/10 shadow-none">
             <CardHeader>
               <CardTitle className="font-display text-xl">Repair & verification queue</CardTitle>
-              <CardDescription>Synthetic row until miners stream repair telemetry</CardDescription>
+              <CardDescription>Gateway/validator status signals while repair telemetry matures</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.repairQueue.map((r) => (

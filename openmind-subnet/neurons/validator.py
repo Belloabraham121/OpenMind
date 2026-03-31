@@ -23,6 +23,14 @@ from openmind.checkpoint import save_checkpoint
 from openmind.scoring import get_rewards
 from openmind.utils.uids import get_random_uids
 from gateway.api import app as gateway_app, configure as configure_gateway
+from neurons.env_config import (
+    env_int,
+    gateway_bind,
+    load_netuid,
+    load_subtensor_network,
+    load_wallet,
+    localnet_patch_axons_enabled,
+)
 
 
 class Validator:
@@ -37,15 +45,19 @@ class Validator:
         """
         self.config = config or bt.Config()
 
-        # Local dev defaults.
-        self.netuid = getattr(self.config, "netuid", None) or 2
-        self.chain_endpoint = "ws://127.0.0.1:9944"
-        self.wallet_name = "test-coldkey"
-        self.wallet_hotkey = "validator-hotkey"
-        self.wallet_path = "~/Documents/bittensor-test-wallet"
-        self.sample_size = 4
+        cfg_uid = getattr(self.config, "netuid", None)
+        self.netuid = int(cfg_uid) if cfg_uid is not None else load_netuid(2)
+        self.chain_endpoint = load_subtensor_network()
+        self.wallet_name, self.wallet_hotkey, self.wallet_path = load_wallet(
+            default_hotkey="validator-hotkey"
+        )
+        self.sample_size = env_int("OPENMIND_VALIDATOR_SAMPLE_SIZE", 4)
         self.local_miner_host = os.environ.get("OPENMIND_MINER_HOST", "127.0.0.1")
         self.local_miner_port = int(os.environ.get("OPENMIND_MINER_PORT", "8091"))
+        if not localnet_patch_axons_enabled():
+            bt.logging.info(
+                "OPENMIND_LOCALNET_PATCH_AXONS disabled — dendrite uses on-chain axon IPs/ports."
+            )
 
         # Standard Bittensor components — pass params directly to constructors.
         self.wallet = bt.Wallet(
@@ -92,6 +104,7 @@ class Validator:
         self._rs_expected_sha256: str | None = None
         self._chunk_source_session: Dict[str, str] = {}
         self._live_session_id: str | None = None
+        self._durability_samples: List[Dict[str, Any]] = []
 
         bt.logging.info(
             f"OpenMind validator initialised "
@@ -109,6 +122,8 @@ class Validator:
         """
         Replace axons with port 0 (common on localnet) with the known local miner.
         """
+        if not localnet_patch_axons_enabled():
+            return list(axons)
         patched: List[Any] = []
         for ax in axons:
             if getattr(ax, "port", 0) == 0:
@@ -454,6 +469,17 @@ class Validator:
             responses=metrics,
         )
 
+        self._durability_samples.append(
+            {
+                "ts": time.time(),
+                "mode": int(mode),
+                "metrics": metrics,
+                "uids": list(miner_uids),
+            }
+        )
+        if len(self._durability_samples) > 240:
+            self._durability_samples = self._durability_samples[-240:]
+
         bt.logging.info(f"Scored responses: {rewards}")
 
         save_checkpoint(
@@ -473,8 +499,11 @@ class Validator:
 
         bt.logging.info(f"Updated EMA scores (sample): {self.scores[:5]}")
 
-    def _start_gateway(self, host: str = "0.0.0.0", port: int = 8090) -> None:
+    def _start_gateway(self, host: str | None = None, port: int | None = None) -> None:
         """Launch the REST gateway in a daemon thread."""
+        gh, gp = gateway_bind()
+        host = gh if host is None else host
+        port = gp if port is None else port
         configure_gateway(self)
         config = uvicorn.Config(gateway_app, host=host, port=port, log_level="info")
         server = uvicorn.Server(config)

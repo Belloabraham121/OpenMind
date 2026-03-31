@@ -40,6 +40,15 @@ export type DashboardStatsDoc = {
   updatedAt: Date
 }
 
+export type StoredChunkDoc = {
+  _id?: ObjectId
+  userId: ObjectId
+  chunkId: string
+  sessionId?: string
+  firstSeenAt: Date
+  lastSeenAt: Date
+}
+
 export type WorkflowDoc = {
   _id?: ObjectId
   userId: ObjectId
@@ -56,12 +65,13 @@ export async function dashboardCollections() {
     workspaces: db.collection<WorkspaceDoc>("workspaces"),
     activity: db.collection<ActivityEventDoc>("activity_events"),
     stats: db.collection<DashboardStatsDoc>("dashboard_stats"),
+    storedChunks: db.collection<StoredChunkDoc>("stored_chunks"),
     workflows: db.collection<WorkflowDoc>("workflows"),
   }
 }
 
 export async function ensureDashboardIndexes() {
-  const { workspaces, activity, stats, workflows } = await dashboardCollections()
+  const { workspaces, activity, stats, storedChunks, workflows } = await dashboardCollections()
   await Promise.all([
     workspaces.createIndex({ userId: 1 }),
     workspaces.createIndex({ userId: 1, slug: 1 }, { unique: true }),
@@ -69,6 +79,8 @@ export async function ensureDashboardIndexes() {
     activity.createIndex({ userId: 1, kind: 1, createdAt: -1 }),
     activity.createIndex({ createdAt: -1 }),
     stats.createIndex({ userId: 1 }, { unique: true }),
+    storedChunks.createIndex({ userId: 1, chunkId: 1 }, { unique: true }),
+    storedChunks.createIndex({ userId: 1, lastSeenAt: -1 }),
     workflows.createIndex({ userId: 1, updatedAt: -1 }),
     workflows.createIndex({ userId: 1, externalId: 1 }, { unique: true }),
   ])
@@ -158,4 +170,67 @@ export async function updateWorkspaceName(
   )
   if (res.matchedCount === 0) return { ok: false as const, error: "Workspace not found." }
   return { ok: true as const }
+}
+
+function extractChunkIds(raw: unknown): string[] {
+  if (!raw || typeof raw !== "object") return []
+  const maybeResults = (raw as { results?: unknown }).results
+  if (!Array.isArray(maybeResults)) return []
+  const ids = new Set<string>()
+  for (const item of maybeResults) {
+    if (!item || typeof item !== "object") continue
+    const id = (item as { id?: unknown }).id
+    if (typeof id === "string" && id.trim()) ids.add(id.trim())
+  }
+  return [...ids]
+}
+
+/**
+ * Derive per-user stored chunk cardinality from successful gateway store responses.
+ * Uses a deduped ``stored_chunks`` collection as source of truth.
+ */
+export async function syncStoredChunksFromGatewayStore(
+  userId: ObjectId,
+  storeResponse: unknown,
+  sessionId?: string,
+) {
+  const chunkIds = extractChunkIds(storeResponse)
+  if (chunkIds.length === 0) return
+
+  await ensureDashboardIndexes()
+  const { storedChunks, stats } = await dashboardCollections()
+  const now = new Date()
+
+  await storedChunks.bulkWrite(
+    chunkIds.map((chunkId) => ({
+      updateOne: {
+        filter: { userId, chunkId },
+        update: {
+          $set: {
+            lastSeenAt: now,
+            ...(sessionId ? { sessionId } : {}),
+          },
+          $setOnInsert: {
+            userId,
+            chunkId,
+            firstSeenAt: now,
+          },
+        },
+        upsert: true,
+      },
+    })),
+    { ordered: false },
+  )
+
+  const totalChunks = await storedChunks.countDocuments({ userId })
+  await stats.updateOne(
+    { userId },
+    {
+      $set: {
+        storedChunks: totalChunks,
+        updatedAt: now,
+      },
+    },
+    { upsert: true },
+  )
 }

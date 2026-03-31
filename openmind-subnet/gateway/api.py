@@ -38,6 +38,8 @@ from gateway.models import (
 
 from openmind.extraction import extract_temporal
 
+from neurons.env_config import localnet_patch_axons_enabled
+
 
 @asynccontextmanager
 async def _gateway_lifespan(app: FastAPI):
@@ -193,6 +195,8 @@ _LOCAL_MINER_PORT = int(os.environ.get("OPENMIND_MINER_PORT", "8091"))
 
 def _patch_axons(axons: List[Any]) -> List[Any]:
     """Replace axons with port 0 (not served on-chain) with the known local miner."""
+    if not localnet_patch_axons_enabled():
+        return list(axons)
     patched = []
     for ax in axons:
         if getattr(ax, "port", 0) == 0:
@@ -552,6 +556,95 @@ def _subnet_quality_payload() -> Dict[str, Any]:
     }
 
 
+def _durability_payload() -> Dict[str, Any]:
+    """
+    Durability score from validator challenge outcomes (not UI heuristics).
+    Uses recent mode 1/2/5 samples:
+      - mode 1: storage_ok
+      - mode 2: version_ok, checkpoint_ok
+      - mode 5: rs_reconstruction_ok
+    """
+    if _validator is None:
+        return {
+            "configured": False,
+            "durability_score": None,
+            "window_samples": 0,
+            "components": {},
+        }
+
+    samples = getattr(_validator, "_durability_samples", []) or []
+    recent = samples[-120:]
+
+    storage_vals: List[float] = []
+    version_vals: List[float] = []
+    checkpoint_vals: List[float] = []
+    rs_vals: List[float] = []
+
+    for sample in recent:
+        mode = int(sample.get("mode", -1))
+        metrics = sample.get("metrics", [])
+        if not isinstance(metrics, list):
+            continue
+        if mode == 1:
+            for m in metrics:
+                if isinstance(m, dict):
+                    storage_vals.append(1.0 if bool(m.get("storage_ok")) else 0.0)
+        elif mode == 2:
+            for m in metrics:
+                if isinstance(m, dict):
+                    version_vals.append(1.0 if bool(m.get("version_ok")) else 0.0)
+                    checkpoint_vals.append(1.0 if bool(m.get("checkpoint_ok")) else 0.0)
+        elif mode == 5:
+            for m in metrics:
+                if isinstance(m, dict) and "rs_reconstruction_ok" in m:
+                    rs_vals.append(1.0 if bool(m.get("rs_reconstruction_ok")) else 0.0)
+
+    def _avg(vals: List[float]) -> Optional[float]:
+        if not vals:
+            return None
+        return sum(vals) / float(len(vals))
+
+    components = {
+        "storage_pass_rate": _avg(storage_vals),
+        "version_pass_rate": _avg(version_vals),
+        "checkpoint_pass_rate": _avg(checkpoint_vals),
+        "reconstruction_pass_rate": _avg(rs_vals),
+    }
+
+    weighted_parts: List[tuple[float, float]] = []
+    if components["storage_pass_rate"] is not None:
+        weighted_parts.append((0.45, components["storage_pass_rate"]))
+    if components["version_pass_rate"] is not None:
+        weighted_parts.append((0.20, components["version_pass_rate"]))
+    if components["checkpoint_pass_rate"] is not None:
+        weighted_parts.append((0.20, components["checkpoint_pass_rate"]))
+    if components["reconstruction_pass_rate"] is not None:
+        weighted_parts.append((0.15, components["reconstruction_pass_rate"]))
+
+    if weighted_parts:
+        num = sum(w * v for w, v in weighted_parts)
+        den = sum(w for w, _ in weighted_parts)
+        durability_score = round((num / den) * 100.0, 1)
+    else:
+        durability_score = None
+
+    return {
+        "configured": True,
+        "durability_score": durability_score,
+        "window_samples": len(recent),
+        "components": {
+            "storage_pass_rate": components["storage_pass_rate"],
+            "version_pass_rate": components["version_pass_rate"],
+            "checkpoint_pass_rate": components["checkpoint_pass_rate"],
+            "reconstruction_pass_rate": components["reconstruction_pass_rate"],
+            "storage_observations": len(storage_vals),
+            "version_observations": len(version_vals),
+            "checkpoint_observations": len(checkpoint_vals),
+            "reconstruction_observations": len(rs_vals),
+        },
+    }
+
+
 @app.get("/v1/subnet/quality")
 @app.get("/v1/network/quality")
 async def subnet_quality():
@@ -560,6 +653,13 @@ async def subnet_quality():
     Used by the dashboard Network Quality view.
     """
     return _subnet_quality_payload()
+
+
+@app.get("/v1/subnet/durability")
+@app.get("/v1/network/durability")
+async def subnet_durability():
+    """Durability telemetry derived from live validator challenge outcomes."""
+    return _durability_payload()
 
 
 @app.get("/v1/health", response_model=HealthResponse)

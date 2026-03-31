@@ -22,20 +22,38 @@ export async function GET() {
   ])
 
   const chunks = st?.storedChunks ?? 0
-  const coveragePercent = chunks > 0 ? Math.min(99, 70 + Math.round(Math.log10(chunks + 1) * 8)) : 72
 
   let gatewayOk: boolean | null = null
+  let coveragePercent = 0
+  let durabilityMeta = "No validator durability telemetry yet."
   if (getSubnetGatewayBaseUrl()) {
-    const gh = await forwardSubnetJson("/v1/health", { method: "GET" })
+    const [gh, dd] = await Promise.all([
+      forwardSubnetJson("/v1/health", { method: "GET" }),
+      forwardSubnetJson("/v1/subnet/durability", { method: "GET" }),
+    ])
     gatewayOk = gh.ok
+    if (dd.ok && dd.data && typeof dd.data === "object") {
+      const payload = dd.data as {
+        durability_score?: unknown
+        window_samples?: unknown
+      }
+      const score = Number(payload.durability_score)
+      const samples = Number(payload.window_samples)
+      if (Number.isFinite(score)) {
+        coveragePercent = Math.max(0, Math.min(100, Math.round(score)))
+        durabilityMeta = Number.isFinite(samples)
+          ? `Validator challenge-derived durability score (${samples} samples)`
+          : "Validator challenge-derived durability score"
+      }
+    }
   }
 
   return NextResponse.json({
     summary: {
       label: "Default durability",
-      description: "Subnet-backed replication with hybrid retrieval; single standard storage path.",
+      description: "Validator-derived durability from live storage/version/reconstruction challenges.",
       coveragePercent,
-      meta: `${ingestWeek} ingest events (7d) · ${queryWeek} queries (7d) · ${chunks} stored chunks`,
+      meta: `${durabilityMeta} · ${ingestWeek} ingest events (7d) · ${queryWeek} queries (7d) · ${chunks} stored chunks`,
     },
     repairQueue: [
       {

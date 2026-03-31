@@ -20,6 +20,15 @@ from openmind import retrieval, storage, durability, versioning, checkpoint, sha
 from openmind import storage_v2
 from openmind import extraction, graph
 
+from neurons.env_config import (
+    env_bool,
+    is_probably_local_chain,
+    load_axon_endpoints,
+    load_netuid,
+    load_subtensor_network,
+    load_wallet,
+)
+
 
 class Miner:
     """
@@ -37,12 +46,24 @@ class Miner:
         """
         self.config = config or bt.Config()
 
-        # Local dev defaults.
-        self.netuid = getattr(self.config, "netuid", None) or 2
-        self.chain_endpoint = "ws://127.0.0.1:9944"
-        self.wallet_name = "test-coldkey"
-        self.wallet_hotkey = "test-hotkey"
-        self.wallet_path = "~/Documents/bittensor-test-wallet"
+        cfg_uid = getattr(self.config, "netuid", None)
+        self.netuid = int(cfg_uid) if cfg_uid is not None else load_netuid(2)
+        self.chain_endpoint = load_subtensor_network()
+        self.wallet_name, self.wallet_hotkey, self.wallet_path = load_wallet(
+            default_hotkey="test-hotkey"
+        )
+        bind_ip, axon_port, public_ip, public_port, pub_explicit = load_axon_endpoints(
+            self.chain_endpoint
+        )
+        self._axon_bind_ip = bind_ip
+        self._axon_port = axon_port
+        self._public_ip = public_ip
+        self._public_port = public_port
+        if not is_probably_local_chain(self.chain_endpoint) and not pub_explicit:
+            bt.logging.warning(
+                "OPENMIND_PUBLIC_IP is not set — axon is advertised as 127.0.0.1; "
+                "set it to your public IPv4 for testnet/mainnet."
+            )
 
         # Standard Bittensor components — pass params directly to constructors
         # so they don't rely on config namespace structure.
@@ -85,10 +106,10 @@ class Miner:
         try:
             self.axon = bt.Axon(
                 wallet=self.wallet,
-                ip="0.0.0.0",
-                port=8091,
-                external_ip="127.0.0.1",
-                external_port=8091,
+                ip=self._axon_bind_ip,
+                port=self._axon_port,
+                external_ip=self._public_ip,
+                external_port=self._public_port,
             )
             self.axon.attach(
                 forward_fn=_forward,
@@ -470,6 +491,22 @@ def run() -> None:
             print(f"[MINER] Axon listening on {miner.axon.ip}:{miner.axon.port}")
         except Exception as e:
             bt.logging.error(f"Failed to start axon: {e}")
+        if miner.subtensor is not None and env_bool("OPENMIND_SERVE_AXON", False):
+            try:
+                sa = getattr(miner.subtensor, "serve_axon", None)
+                if not callable(sa):
+                    bt.logging.warning(
+                        "OPENMIND_SERVE_AXON=1 but subtensor.serve_axon is missing; "
+                        "register your axon with btcli for your bittensor version."
+                    )
+                else:
+                    try:
+                        sa(netuid=miner.netuid, axon=miner.axon)
+                    except TypeError:
+                        sa(miner.axon, miner.netuid)
+                    bt.logging.info("serve_axon extrinsic submitted.")
+            except Exception as e:
+                bt.logging.warning(f"serve_axon failed (btcli subnet register may still be required): {e}")
 
     print("[MINER] Running main loop (Ctrl+C to stop)...")
     try:
