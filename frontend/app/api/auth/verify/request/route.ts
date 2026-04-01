@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { authCollections, createSixDigitCode } from "@/lib/auth-db"
+import { authWaitlistBlockedResponse, isAuthOpen } from "@/lib/auth-access"
 
 export const runtime = "nodejs"
 
@@ -10,6 +11,10 @@ type Body = {
 }
 
 export async function POST(request: Request) {
+  if (!isAuthOpen()) {
+    return authWaitlistBlockedResponse()
+  }
+
   let body: Body = {}
   try {
     body = (await request.json()) as Body

@@ -16,6 +16,7 @@ import {
 } from "@/lib/auth-session"
 import { ensureDashboardForUser } from "@/lib/dashboard-db"
 import { recordActivity } from "@/lib/record-activity"
+import { authWaitlistBlockedResponse, isAuthOpen } from "@/lib/auth-access"
 
 export const runtime = "nodejs"
 
@@ -48,6 +49,10 @@ function logRegisterError(step: string, err: unknown) {
 }
 
 export async function POST(request: Request) {
+  if (!isAuthOpen()) {
+    return authWaitlistBlockedResponse()
+  }
+
   let body: Body = {}
   try {
     body = (await request.json()) as Body

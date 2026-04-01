@@ -8,8 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, ArrowRight, Wallet } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AUTH_WAITLIST_MESSAGE } from "@/lib/auth-access-message"
+import { ArrowLeft, ArrowRight, Info, Wallet } from "lucide-react"
 import { toast } from "sonner"
+
+/** Must match server `AUTH_OPEN`; set `NEXT_PUBLIC_AUTH_OPEN=true` in .env for local auth. */
+const AUTH_OPEN = process.env.NEXT_PUBLIC_AUTH_OPEN === "true"
 
 export function LoginForm() {
   const router = useRouter()
@@ -42,6 +47,10 @@ export function LoginForm() {
   }, [resendCooldown])
 
   async function submit(mode: "sign-in" | "register") {
+    if (!AUTH_OPEN) {
+      toast.error(AUTH_WAITLIST_MESSAGE)
+      return
+    }
     if (mode === "register" && !acceptedTerms) {
       toast.error("Accept the terms to create an account.")
       return
@@ -83,6 +92,10 @@ export function LoginForm() {
   }
 
   async function requestVerificationCode() {
+    if (!AUTH_OPEN) {
+      toast.error(AUTH_WAITLIST_MESSAGE)
+      return
+    }
     if (!userId || resendCooldown > 0) return
     const res = await fetch("/api/auth/verify/request", {
       method: "POST",
@@ -103,6 +116,10 @@ export function LoginForm() {
   }
 
   async function confirmVerificationCode() {
+    if (!AUTH_OPEN) {
+      toast.error(AUTH_WAITLIST_MESSAGE)
+      return
+    }
     if (!userId || !verificationCode) return
     const res = await fetch("/api/auth/verify/confirm", {
       method: "POST",
@@ -123,6 +140,10 @@ export function LoginForm() {
   }
 
   async function startPasswordReset() {
+    if (!AUTH_OPEN) {
+      toast.error(AUTH_WAITLIST_MESSAGE)
+      return
+    }
     const res = await fetch("/api/auth/password/forgot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -142,6 +163,10 @@ export function LoginForm() {
   }
 
   async function finishPasswordReset() {
+    if (!AUTH_OPEN) {
+      toast.error(AUTH_WAITLIST_MESSAGE)
+      return
+    }
     if (!userId || !resetCode || !newPassword) return
     const res = await fetch("/api/auth/password/reset", {
       method: "POST",
@@ -204,9 +229,19 @@ export function LoginForm() {
             Sign in to your memory workspace
           </h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            Use your email or phone number and password to access your OpenMind dashboard.
+            {AUTH_OPEN
+              ? "Use your email or phone number and password to access your OpenMind dashboard."
+              : "Dashboard access is limited to people on our waitlist or whitelist while we run closed testing."}
           </p>
         </div>
+
+        {!AUTH_OPEN && (
+          <Alert className="mb-6 border-foreground/20 bg-card/90">
+            <Info className="size-4" />
+            <AlertTitle>Tester access only</AlertTitle>
+            <AlertDescription>{AUTH_WAITLIST_MESSAGE}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="rounded-2xl border border-foreground/10 bg-card/80 p-6 shadow-sm backdrop-blur-sm md:p-8">
           <Tabs defaultValue="sign-in" className="gap-6">
