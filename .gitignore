@@ -4,3 +4,4 @@ bittensor-subnet-template/
 .DS_Store
 .vscode/
 LongMemEval/
+.pnpm-store/
