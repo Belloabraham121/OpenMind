@@ -1,5 +1,13 @@
-import fs from "node:fs/promises"
 import { loadOpenmindHookEnv } from "./load-openmind-hook-env.mjs"
+
+/**
+ * Cursor hook: sessionStart
+ *
+ * Fires once when a new conversation opens.  Makes a single smart recall
+ * to fetch the session anchor (compressed summary) and injects a compact
+ * context hint (~50-100 tokens).  The AI then knows what topics exist in
+ * memory and can call openmind_query via MCP for deeper recall on demand.
+ */
 
 async function readStdinJson() {
   const chunks = []
@@ -13,39 +21,62 @@ async function readStdinJson() {
   }
 }
 
-function tail(text, n) {
-  if (typeof text !== "string") return ""
-  if (text.length <= n) return text
-  return text.slice(-n)
+function logErr(msg) {
+  console.error(`[openmind-hook sessionStart] ${msg}`)
 }
 
-function extractSnippetFromMemoryItem(item) {
-  if (!item || typeof item !== "object") return ""
-  const o = item
-  const content =
-    typeof o.content === "string"
-      ? o.content
-      : typeof o.text === "string"
-        ? o.text
-        : typeof o.snippet === "string"
-          ? o.snippet
-          : typeof o.chunk === "string"
-            ? o.chunk
-            : ""
-  if (content) return content
-  try {
-    return JSON.stringify(o)
-  } catch {
-    return ""
+function buildAnchorContext(smartResult) {
+  if (!smartResult || typeof smartResult !== "object") return ""
+
+  const anchor = smartResult.anchor
+  const facts = Array.isArray(smartResult.facts) ? smartResult.facts : []
+  const factCount = smartResult.fact_count ?? facts.length
+  const sourceCount = smartResult.source_count ?? 0
+
+  const lines = []
+
+  if (anchor && typeof anchor === "object") {
+    const intent = typeof anchor.intent === "string" && anchor.intent
+      ? anchor.intent
+      : null
+    const keyFacts = Array.isArray(anchor.key_facts) ? anchor.key_facts : []
+    const keyDecisions = Array.isArray(anchor.key_decisions) ? anchor.key_decisions : []
+
+    if (intent) {
+      lines.push(`- ${intent}`)
+    }
+
+    if (keyFacts.length) {
+      lines.push(`- Key topics: ${keyFacts.slice(0, 5).join("; ")}`)
+    }
+
+    if (keyDecisions.length) {
+      lines.push(`- Decisions: ${keyDecisions.slice(0, 3).join("; ")}`)
+    }
+
+    lines.push(`- ${factCount} facts stored, ${sourceCount} sources available`)
+  } else if (factCount > 0) {
+    const recentTopics = facts
+      .slice(0, 5)
+      .map((f) => (typeof f.content === "string" ? f.content : ""))
+      .filter(Boolean)
+      .map((c) => c.slice(0, 60))
+    if (recentTopics.length) {
+      lines.push(`- Recent: ${recentTopics.join("; ")}`)
+    }
+    lines.push(`- ${factCount} facts stored`)
   }
+
+  return lines.join("\n")
 }
 
 async function main() {
   loadOpenmindHookEnv()
-  const input = await readStdinJson()
+  await readStdinJson()
 
   const apiKey = process.env.OPENMIND_API_KEY?.trim()
   if (!apiKey) {
+    logErr("skip: OPENMIND_API_KEY missing")
     process.stdout.write(JSON.stringify({}))
     return
   }
@@ -53,13 +84,6 @@ async function main() {
   const bffUrl = (process.env.OPENMIND_BFF_URL ?? "http://localhost:3000")
     .trim()
     .replace(/\/$/, "")
-  const transcriptPath = input.transcript_path ?? process.env.CURSOR_TRANSCRIPT_PATH
-
-  let seed = "Relevant user goals and prior decisions."
-  if (typeof transcriptPath === "string" && transcriptPath.trim()) {
-    const txt = await fs.readFile(transcriptPath).catch(() => "")
-    if (txt) seed = tail(txt, 4000)
-  }
 
   let additional_context = ""
   try {
@@ -70,40 +94,42 @@ async function main() {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        query: seed,
-        top_k: 6,
+        query: "session context summary",
+        top_k: 5,
         smart: true,
       }),
     })
 
-    const data = await res.json().catch(() => ({}))
-    const results = Array.isArray(data?.results) ? data.results : []
+    if (!res.ok) {
+      logErr(`query failed: HTTP ${res.status}`)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      const results = Array.isArray(data?.results) ? data.results : []
+      const smartResult = results.length > 0 ? results[0] : null
 
-    const snippets = results
-      .slice(0, 4)
-      .map((r, i) => {
-        const s = extractSnippetFromMemoryItem(r)
-        const cleaned = s.replace(/\s+/g, " ").trim()
-        return cleaned ? `- ${cleaned.slice(0, 500)}` : `- [memory item ${i + 1} unavailable]`
-      })
-      .filter(Boolean)
+      const anchorBlock = buildAnchorContext(smartResult)
 
-    if (snippets.length) {
-      additional_context = [
-        "Relevant OpenMind memories (read-only):",
-        ...snippets,
-        "",
-        "Use these memories when relevant. If anything conflicts with the current user message, trust the latest user instruction.",
-      ].join("\n")
+      if (anchorBlock) {
+        additional_context = [
+          "Relevant OpenMind memories (read-only):",
+          anchorBlock,
+          "",
+          "Use these memories when relevant. If anything conflicts with the current user message, trust the latest user instruction.",
+        ].join("\n")
+        logErr(`ok: injected anchor context (${additional_context.length} chars)`)
+      } else {
+        logErr("ok: no anchor or facts found in memory")
+      }
     }
-  } catch {
-    // Fail-open by design.
+  } catch (e) {
+    logErr(`query error: ${e instanceof Error ? e.message : String(e)}`)
   }
 
   process.stdout.write(JSON.stringify({ additional_context }))
 }
 
-main().catch(() => {
+main().catch((e) => {
+  logErr(`fatal: ${e instanceof Error ? e.message : String(e)}`)
   process.stdout.write(JSON.stringify({}))
 })
 

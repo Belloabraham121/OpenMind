@@ -22,8 +22,11 @@ _nlp = None
 def _get_nlp():
     global _nlp
     if _nlp is None:
-        import spacy
-        _nlp = spacy.load("en_core_web_sm")
+        try:
+            import spacy
+            _nlp = spacy.load("en_core_web_sm")
+        except (ImportError, OSError):
+            return None
     return _nlp
 
 
@@ -66,6 +69,8 @@ def extract_temporal(
             ).isoformat()
 
     nlp = _get_nlp()
+    if nlp is None:
+        return None
     doc = nlp(text)
     for ent in doc.ents:
         if ent.label_ == "DATE":
@@ -86,6 +91,8 @@ def extract_temporal(
 def _extract_svo_triples(text: str) -> List[Dict[str, str]]:
     """Extract (subject, predicate, object) triples via dependency parsing."""
     nlp = _get_nlp()
+    if nlp is None:
+        return []
     doc = nlp(text)
     triples = []
 
@@ -125,6 +132,8 @@ def _expand_compound(token) -> str:
 def _extract_entity_assertions(text: str) -> List[Dict[str, str]]:
     """Extract assertions from NER: 'PERSON works at ORG', 'EVENT on DATE', etc."""
     nlp = _get_nlp()
+    if nlp is None:
+        return []
     doc = nlp(text)
     entities = [(ent.text, ent.label_) for ent in doc.ents]
     assertions = []
@@ -154,6 +163,8 @@ def _extract_entity_assertions(text: str) -> List[Dict[str, str]]:
 def extract_fact_keys(text: str) -> List[str]:
     """Extract searchable fact keys: named entities, dates, amounts."""
     nlp = _get_nlp()
+    if nlp is None:
+        return []
     doc = nlp(text)
     keys = set()
     for ent in doc.ents:

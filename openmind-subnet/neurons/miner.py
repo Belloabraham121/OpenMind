@@ -103,6 +103,11 @@ class Miner:
         async def _priority(synapse: OpenMindRequest) -> float:
             return await _self.priority(synapse)
 
+        skip_verify = env_bool("OPENMIND_SKIP_AXON_VERIFY", False)
+
+        def _noop_verify(synapse: OpenMindRequest) -> None:
+            return None
+
         try:
             self.axon = bt.Axon(
                 wallet=self.wallet,
@@ -111,11 +116,17 @@ class Miner:
                 external_ip=self._public_ip,
                 external_port=self._public_port,
             )
-            self.axon.attach(
-                forward_fn=_forward,
-                blacklist_fn=_blacklist,
-                priority_fn=_priority,
-            )
+            attach_kwargs: dict[str, t.Any] = {
+                "forward_fn": _forward,
+                "blacklist_fn": _blacklist,
+                "priority_fn": _priority,
+            }
+            if skip_verify:
+                attach_kwargs["verify_fn"] = _noop_verify
+                bt.logging.warning(
+                    "OPENMIND_SKIP_AXON_VERIFY=true — signature verification disabled (local dev only)."
+                )
+            self.axon.attach(**attach_kwargs)
         except Exception as e:
             import traceback as _tb
             bt.logging.error(f"Failed to create Axon for miner: {e}\n{_tb.format_exc()}")
@@ -209,6 +220,15 @@ class Miner:
         - performs a stubbed retrieval call
         - attaches empty versioning / checkpoint metadata
         """
+        action = (synapse.filters or {}).get("_action")
+        ch = (synapse.filters or {}).get("challenge_mode")
+        bt.logging.info(
+            f"[MINER forward] session={synapse.session_id!r} "
+            f"action={action!r} challenge={ch!r} "
+            f"query={str(synapse.query or '')[:60]!r} "
+            f"filters_keys={list((synapse.filters or {}).keys())}"
+        )
+
         # Enforce shared-space access control if a shared_space_id is present.
         if synapse.shared_space_id is not None:
             authorized = shared_space.authorize_access(
@@ -351,18 +371,33 @@ class Miner:
             }]
 
         elif action == "query_smart":
-            clean_filters = {
-                k: v for k, v in (synapse.filters or {}).items()
-                if not k.startswith("_")
-            }
-            synapse.results = retrieval.retrieve_smart(
-                session_id=synapse.session_id,
-                query=synapse.query,
-                embedding=synapse.embedding,
-                top_k=synapse.top_k,
-                filters=clean_filters,
-                time_point=synapse.as_of_timestamp,
-            )
+            try:
+                clean_filters = {
+                    k: v for k, v in (synapse.filters or {}).items()
+                    if not k.startswith("_")
+                }
+                synapse.results = retrieval.retrieve_smart(
+                    session_id=synapse.session_id,
+                    query=synapse.query,
+                    embedding=synapse.embedding,
+                    top_k=synapse.top_k,
+                    filters=clean_filters,
+                    time_point=synapse.as_of_timestamp,
+                )
+                _smart = synapse.results[0] if synapse.results else {}
+                bt.logging.info(
+                    f"[MINER query_smart] session={synapse.session_id!r} "
+                    f"facts={len(_smart.get('facts', []))} "
+                    f"sources={len(_smart.get('sources', []))} "
+                    f"anchor={'yes' if _smart.get('anchor') else 'no'}"
+                )
+            except Exception as _qe:
+                import traceback as _tb
+                bt.logging.error(
+                    f"[MINER query_smart CRASH] session={synapse.session_id!r} "
+                    f"error={_qe}\n{_tb.format_exc()}"
+                )
+                synapse.results = []
 
         elif action == "compact":
             all_facts = retrieval.get_facts_for_session(synapse.session_id)
@@ -380,20 +415,35 @@ class Miner:
                 synapse.results = [{"status": "no_compaction_needed"}]
 
         else:
-            clean_filters = {
-                k: v for k, v in (synapse.filters or {}).items()
-                if not k.startswith("_")
-            }
-            synapse.results = retrieval.retrieve(
-                session_id=synapse.session_id,
-                query=synapse.query,
-                embedding=synapse.embedding,
-                top_k=synapse.top_k,
-                filters=clean_filters,
-                as_of_timestamp=synapse.as_of_timestamp,
-                version_id=synapse.version_id,
-                diff_since=synapse.diff_since,
-            )
+            try:
+                clean_filters = {
+                    k: v for k, v in (synapse.filters or {}).items()
+                    if not k.startswith("_")
+                }
+                synapse.results = retrieval.retrieve(
+                    session_id=synapse.session_id,
+                    query=synapse.query,
+                    embedding=synapse.embedding,
+                    top_k=synapse.top_k,
+                    filters=clean_filters,
+                    as_of_timestamp=synapse.as_of_timestamp,
+                    version_id=synapse.version_id,
+                    diff_since=synapse.diff_since,
+                )
+                bt.logging.info(
+                    f"[MINER query] session={synapse.session_id!r} "
+                    f"query={str(synapse.query or '')[:60]!r} "
+                    f"results_count={len(synapse.results)} "
+                    f"chunks_total={len(retrieval._CHUNKS)} "
+                    f"session_chunks={sum(1 for c in retrieval._CHUNKS if c.session_id == synapse.session_id)}"
+                )
+            except Exception as _qe:
+                import traceback as _tb
+                bt.logging.error(
+                    f"[MINER query CRASH] session={synapse.session_id!r} "
+                    f"error={_qe}\n{_tb.format_exc()}"
+                )
+                synapse.results = []
 
         # Versioning / provenance hooks (currently minimal).
         synapse.version_diff = None

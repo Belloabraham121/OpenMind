@@ -6,6 +6,7 @@ Runs inside the validator process and translates HTTP requests into
 """
 
 import copy
+import hashlib
 import logging
 import os
 import time
@@ -191,47 +192,126 @@ def _require_validator():
 
 _LOCAL_MINER_HOST = os.environ.get("OPENMIND_MINER_HOST", "127.0.0.1")
 _LOCAL_MINER_PORT = int(os.environ.get("OPENMIND_MINER_PORT", "8091"))
+_DEFAULT_SHARD_SIZE = int(os.environ.get("OPENMIND_DETERMINISTIC_SHARD_SIZE", "4"))
+_QUERY_ALL_MINERS = os.environ.get("OPENMIND_QUERY_ALL_MINERS", "false").lower() == "true"
 
 
 def _patch_axons(axons: List[Any]) -> List[Any]:
-    """Replace axons with port 0 (not served on-chain) with the known local miner."""
+    """When localnet patch is enabled, route ALL axons to the local miner.
+
+    On testnet/mainnet the metagraph advertises external IPs that are
+    unreachable from a dev machine, so we redirect every axon to the
+    locally-running miner.  Since all patched axons resolve to the same
+    host:port we deduplicate to a single axon to avoid overwhelming the
+    miner with N identical concurrent connections.
+    Entries that are None (unregistered slots) are silently skipped.
+    """
     if not localnet_patch_axons_enabled():
-        return list(axons)
-    patched = []
+        return [ax for ax in axons if ax is not None]
+    template = None
     for ax in axons:
-        if getattr(ax, "port", 0) == 0:
-            p = copy.deepcopy(ax)
-            p.ip = _LOCAL_MINER_HOST
-            p.port = _LOCAL_MINER_PORT
-            patched.append(p)
-        else:
-            patched.append(ax)
-    return patched
+        if ax is not None:
+            template = ax
+            break
+    if template is None:
+        return []
+    p = copy.deepcopy(template)
+    p.ip = _LOCAL_MINER_HOST
+    p.port = _LOCAL_MINER_PORT
+    return [p]
+
+
+def _eligible_miner_uids(v: Any, exclude_self: bool = True) -> List[int]:
+    n = int(v.metagraph.n)
+    uids = list(range(n))
+    if not exclude_self:
+        return uids
+
+    try:
+        own_hotkey = v.wallet.hotkey.ss58_address
+        return [uid for uid in uids if v.metagraph.hotkeys[uid] != own_hotkey]
+    except Exception:
+        return uids
+
+
+def _deterministic_uids(v: Any, session_id: str, k: int) -> List[int]:
+    """
+    Deterministically select miner UIDs for a session namespace.
+
+    Uses a stable hash ring over eligible UIDs so reads/writes for the same
+    session tend to hit the same shard set.
+    """
+    eligible = _eligible_miner_uids(v, exclude_self=True)
+    if not eligible:
+        return []
+
+    k = min(max(1, int(k)), len(eligible))
+    if k >= len(eligible):
+        return list(eligible)
+
+    scored: List[tuple[int, int]] = []
+    for uid in eligible:
+        digest = hashlib.sha256(f"{session_id}:{uid}".encode("utf-8")).digest()
+        score = int.from_bytes(digest[:8], byteorder="big", signed=False)
+        scored.append((uid, score))
+    scored.sort(key=lambda t: t[1])
+    return [uid for uid, _ in scored[:k]]
+
+
+def _select_miner_uids(v: Any, synapse: OpenMindRequest, k: int) -> List[int]:
+    session_id = getattr(synapse, "session_id", None)
+
+    if _QUERY_ALL_MINERS:
+        return _eligible_miner_uids(v, exclude_self=True)
+
+    target_k = min(k, int(v.metagraph.n))
+    if isinstance(session_id, str) and session_id.strip():
+        shard_k = min(max(1, _DEFAULT_SHARD_SIZE), int(v.metagraph.n))
+        target_k = min(max(target_k, shard_k), int(v.metagraph.n))
+        return _deterministic_uids(v, session_id=session_id, k=target_k)
+
+    return get_random_uids(v, k=target_k)
 
 
 async def _query_miners(synapse: OpenMindRequest, k: int = 4) -> List[Any]:
-    """Send a synapse to *k* randomly-selected miners and return responses."""
+    """Send a synapse to selected miners and return responses."""
     import asyncio
-    import concurrent.futures
 
     v = _require_validator()
-    miner_uids = get_random_uids(v, k=min(k, int(v.metagraph.n)))
+    miner_uids = _select_miner_uids(v, synapse=synapse, k=k)
     if not miner_uids:
         return []
     axons = _patch_axons([v.metagraph.axons[uid] for uid in miner_uids])
 
-    future = asyncio.run_coroutine_threadsafe(
-        _gw_dendrite(
-            axons=axons,
-            synapse=synapse,
-            deserialize=True,
-            timeout=12.0,
-        ),
-        _gw_loop,
-    )
-    responses = await asyncio.get_event_loop().run_in_executor(
-        None, future.result, 15.0
-    )
+    try:
+        future = asyncio.run_coroutine_threadsafe(
+            _gw_dendrite(
+                axons=axons,
+                synapse=synapse,
+                deserialize=False,
+                timeout=30.0,
+            ),
+            _gw_loop,
+        )
+        raw_responses = await asyncio.get_event_loop().run_in_executor(
+            None, future.result, 35.0
+        )
+    except (TimeoutError, Exception) as exc:
+        bt.logging.warning(
+            f"[GW _query_miners] dendrite call failed ({type(exc).__name__}): {exc}"
+        )
+        return []
+
+    if not isinstance(raw_responses, list):
+        raw_responses = [raw_responses]
+
+    responses = []
+    for r in raw_responses:
+        if hasattr(r, "deserialize"):
+            responses.append(r.deserialize())
+        else:
+            responses.append(r)
+
     return responses
 
 
@@ -310,6 +390,152 @@ def _best_response(responses: List[Any]) -> MemoryResult:
     )
 
 
+def _result_identity(item: Dict[str, Any]) -> str:
+    rid = item.get("id")
+    if isinstance(rid, str) and rid:
+        return f"id:{rid}"
+    content = item.get("content")
+    if isinstance(content, str) and content:
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        return f"content:{digest}"
+    return f"fallback:{hashlib.sha256(str(item).encode('utf-8')).hexdigest()}"
+
+
+def _merge_plain_results(responses: List[Any], top_k: int) -> List[Dict[str, Any]]:
+    merged: Dict[str, Dict[str, Any]] = {}
+    for r in responses:
+        items = getattr(r, "results", None) or []
+        if not isinstance(items, list):
+            continue
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            key = _result_identity(item)
+            prev = merged.get(key)
+            rank_bonus = max(0.0, 1.0 - (idx * 0.05))
+            score = float(item.get("score", 0.0) or 0.0) + rank_bonus
+            if prev is None:
+                candidate = dict(item)
+                candidate["_merge_votes"] = 1
+                candidate["_merge_score"] = score
+                merged[key] = candidate
+                continue
+
+            prev["_merge_votes"] = int(prev.get("_merge_votes", 1)) + 1
+            prev["_merge_score"] = max(float(prev.get("_merge_score", 0.0)), score)
+            # Prefer whichever representation has richer content.
+            if (
+                len(str(item.get("content", ""))) > len(str(prev.get("content", "")))
+                and isinstance(item.get("content"), str)
+            ):
+                for k0, v0 in item.items():
+                    if k0 not in ("_merge_votes", "_merge_score"):
+                        prev[k0] = v0
+
+    ranked = sorted(
+        merged.values(),
+        key=lambda x: (
+            -int(x.get("_merge_votes", 1)),
+            -float(x.get("_merge_score", 0.0)),
+            str(x.get("timestamp", "")),
+        ),
+    )
+
+    out: List[Dict[str, Any]] = []
+    for item in ranked[: max(1, top_k)]:
+        clean = dict(item)
+        clean.pop("_merge_votes", None)
+        clean.pop("_merge_score", None)
+        out.append(clean)
+    return out
+
+
+def _dedupe_by_identity(items: List[Dict[str, Any]], top_k: int) -> List[Dict[str, Any]]:
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = _result_identity(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+        if len(out) >= top_k:
+            break
+    return out
+
+
+def _merge_smart_results(responses: List[Any], top_k: int) -> Dict[str, Any]:
+    anchors: List[Dict[str, Any]] = []
+    facts: List[Dict[str, Any]] = []
+    sources: List[Dict[str, Any]] = []
+
+    for idx, r in enumerate(responses):
+        payload = getattr(r, "results", None) or []
+        bt.logging.info(
+            f"[GW _merge_smart] resp[{idx}] type={type(r).__name__} "
+            f"payload_len={len(payload)} payload_types={[type(x).__name__ for x in payload[:3]]}"
+        )
+        if not isinstance(payload, list) or not payload:
+            continue
+        first = payload[0]
+        if not isinstance(first, dict):
+            bt.logging.warning(
+                f"[GW _merge_smart] resp[{idx}] first item not dict: {type(first).__name__}"
+            )
+            continue
+        bt.logging.info(
+            f"[GW _merge_smart] resp[{idx}] first keys={list(first.keys())} "
+            f"facts={len(first.get('facts') or [])} sources={len(first.get('sources') or [])}"
+        )
+        if "anchor" in first and isinstance(first["anchor"], dict):
+            anchors.append(first["anchor"])
+        facts.extend([f for f in (first.get("facts") or []) if isinstance(f, dict)])
+        sources.extend([s for s in (first.get("sources") or []) if isinstance(s, dict)])
+
+    anchor = anchors[0] if anchors else None
+    dedup_facts = _dedupe_by_identity(facts, top_k=max(1, top_k))
+    dedup_sources = _dedupe_by_identity(sources, top_k=min(max(1, top_k), 8))
+    return {
+        "anchor": anchor,
+        "facts": dedup_facts,
+        "sources": dedup_sources,
+        "fact_count": len(dedup_facts),
+        "source_count": len(dedup_sources),
+    }
+
+
+def _merge_query_response(
+    responses: List[Any],
+    *,
+    top_k: int,
+    smart: bool,
+) -> MemoryResult:
+    if not responses:
+        return MemoryResult()
+
+    if smart:
+        merged_smart = _merge_smart_results(responses, top_k=max(1, top_k))
+        result = MemoryResult(results=[merged_smart])
+        result.anchor = merged_smart.get("anchor")
+        result.facts = merged_smart.get("facts")
+        result.sources = merged_smart.get("sources")
+
+        all_text = ""
+        if result.anchor:
+            all_text += str(result.anchor.get("content", "")) + " "
+        for f in (result.facts or []):
+            all_text += str(f.get("content", "")) + " "
+        for s in (result.sources or []):
+            all_text += str(s.get("content", "")) + " "
+        result.token_estimate = _estimate_tokens(all_text)
+        return result
+
+    merged = _merge_plain_results(responses, top_k=max(1, top_k))
+    return MemoryResult(results=merged)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -359,25 +585,22 @@ async def memory_query(body: QueryRequest):
         multimodal_type=body.multimodal_type,
     )
     responses = await _query_miners(synapse)
-    result = _best_response(responses)
 
-    if result.results and isinstance(result.results[0], dict):
-        smart_data = result.results[0]
-        if "facts" in smart_data:
-            result.anchor = smart_data.get("anchor")
-            result.facts = smart_data.get("facts")
-            result.sources = smart_data.get("sources")
+    _resp_detail = []
+    for _i, _r in enumerate(responses):
+        _items = getattr(_r, "results", None) or []
+        _resp_detail.append(f"resp[{_i}]={len(_items)} items")
+    bt.logging.info(
+        f"[GW query] session={body.session_id!r} query={body.query!r:.80} "
+        f"smart={body.smart} top_k={body.top_k} resolved_time={resolved_time} "
+        f"n_responses={len(responses)} detail={_resp_detail}"
+    )
 
-            all_text = ""
-            if result.anchor:
-                all_text += result.anchor.get("content", "") + " "
-            for f in (result.facts or []):
-                all_text += f.get("content", "") + " "
-            for s in (result.sources or []):
-                all_text += s.get("content", "") + " "
-            result.token_estimate = _estimate_tokens(all_text)
-
-    return result
+    return _merge_query_response(
+        responses,
+        top_k=body.top_k,
+        smart=bool(body.smart),
+    )
 
 
 @app.post("/v1/memory/compact", response_model=MemoryResult)
@@ -461,7 +684,11 @@ async def chat_respond(body: ChatRequest):
         filters={"_action": "query_smart"},
     )
     responses = await _query_miners(synapse)
-    result = _best_response(responses)
+    result = _merge_query_response(
+        responses,
+        top_k=body.top_k,
+        smart=True,
+    )
 
     anchor = None
     facts: List[Dict[str, Any]] = []

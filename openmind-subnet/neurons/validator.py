@@ -119,21 +119,28 @@ class Validator:
             bt.logging.warning("Validator Dendrite not available; cannot query miners.")
 
     def _patch_axons(self, axons: List[Any]) -> List[Any]:
-        """
-        Replace axons with port 0 (common on localnet) with the known local miner.
+        """When localnet patch is enabled, route ALL axons to the local miner.
+
+        On testnet/mainnet the metagraph advertises external IPs that are
+        unreachable from a dev machine, so we redirect every axon to the
+        locally-running miner.  Since all patched axons resolve to the same
+        host:port we deduplicate to a single axon to avoid overwhelming the
+        miner with N identical concurrent connections.
+        Entries that are None (unregistered slots) are silently skipped.
         """
         if not localnet_patch_axons_enabled():
-            return list(axons)
-        patched: List[Any] = []
+            return [ax for ax in axons if ax is not None]
+        template = None
         for ax in axons:
-            if getattr(ax, "port", 0) == 0:
-                p = copy.deepcopy(ax)
-                p.ip = self.local_miner_host
-                p.port = self.local_miner_port
-                patched.append(p)
-            else:
-                patched.append(ax)
-        return patched
+            if ax is not None:
+                template = ax
+                break
+        if template is None:
+            return []
+        p = copy.deepcopy(template)
+        p.ip = self.local_miner_host
+        p.port = self.local_miner_port
+        return [p]
 
     def register_store_results_from_gateway(
         self, results: Any, session_id: str | None = None

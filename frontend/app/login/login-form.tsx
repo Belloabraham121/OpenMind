@@ -47,7 +47,7 @@ export function LoginForm() {
   }, [resendCooldown])
 
   async function submit(mode: "sign-in" | "register") {
-    if (!AUTH_OPEN) {
+    if (!AUTH_OPEN && mode === "register") {
       toast.error(AUTH_WAITLIST_MESSAGE)
       return
     }
@@ -140,10 +140,6 @@ export function LoginForm() {
   }
 
   async function startPasswordReset() {
-    if (!AUTH_OPEN) {
-      toast.error(AUTH_WAITLIST_MESSAGE)
-      return
-    }
     const res = await fetch("/api/auth/password/forgot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -163,10 +159,6 @@ export function LoginForm() {
   }
 
   async function finishPasswordReset() {
-    if (!AUTH_OPEN) {
-      toast.error(AUTH_WAITLIST_MESSAGE)
-      return
-    }
     if (!userId || !resetCode || !newPassword) return
     const res = await fetch("/api/auth/password/reset", {
       method: "POST",

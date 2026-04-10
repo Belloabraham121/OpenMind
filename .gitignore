@@ -5,3 +5,6 @@ bittensor-subnet-template/
 .vscode/
 LongMemEval/
 .pnpm-store/
+DETERMINISTIC_SHARD_MERGE_PLAN.md
+pitch.md
+run.md

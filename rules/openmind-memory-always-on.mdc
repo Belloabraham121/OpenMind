@@ -8,6 +8,8 @@ When OpenMind MCP tools are available, use memory in a proactive loop:
 1) Recall first:
 - Before finalizing an answer, call `openmind_query` with a focused query about the user's current intent.
 - If in Next.js BFF mode, `session_id` may be omitted so the app derives the correct namespace from the authenticated API key.
+- For explicit memory-intent prompts (for example: "do you remember", "what did we discuss", "from our previous chat", "earlier you said"), you MUST run at least one `openmind_query` attempt before answering.
+- Do not reply with "I don't remember" / "I can't recall past chats" until after a recall attempt has been made. If recall returns no relevant items, state that you checked OpenMind memory and found no matching results.
 
 2) Ground the answer:
 - Use retrieved memories only when relevant and non-contradictory with the latest user message.

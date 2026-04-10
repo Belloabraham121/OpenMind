@@ -185,6 +185,12 @@ def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / denom)
 
 
+def _tokenize(text: str) -> List[str]:
+    """Lowercase, strip punctuation, split into tokens for BM25."""
+    import re
+    return re.findall(r"[a-z0-9][-a-z0-9_]*[a-z0-9]|[a-z0-9]+", text.lower())
+
+
 def _bm25_search(
     candidates: List[MemoryChunk],
     query: str,
@@ -198,10 +204,10 @@ def _bm25_search(
     for c in candidates:
         keys = c.metadata.get("fact_keys", [])
         text = c.content + " " + " ".join(keys)
-        corpus.append(text.lower().split())
+        corpus.append(_tokenize(text))
 
     bm25 = BM25Okapi(corpus)
-    scores = bm25.get_scores(query.lower().split())
+    scores = bm25.get_scores(_tokenize(query))
     indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
     return [(candidates[i], float(s)) for i, s in indexed[:top_k] if s > 0]
 
@@ -254,8 +260,13 @@ def enrich_with_graph(
     results: List[Dict[str, Any]],
     graph_hops: int = 2,
     graph_filters: Optional[Dict[str, Any]] = None,
+    max_total: int = 40,
 ) -> List[Dict[str, Any]]:
-    """Enrich retrieval results with graph-connected facts via PageRank walk."""
+    """Enrich retrieval results with graph-connected facts via PageRank walk.
+
+    ``max_total`` caps the combined result size (seeds + enriched) to prevent
+    oversized responses.
+    """
     from openmind import graph as graph_module
 
     if graph_hops <= 0:
@@ -263,7 +274,7 @@ def enrich_with_graph(
 
     seed_ids = [
         r["id"] for r in results
-        if r.get("id") and r.get("metadata", {}).get("type") == "fact"
+        if r.get("id") and r.get("type") == "fact"
     ]
     if not seed_ids:
         return results
@@ -273,29 +284,19 @@ def enrich_with_graph(
     existing_ids = {r["id"] for r in results if r.get("id")}
     new_ids = {fid: score for fid, score in scores.items() if fid not in existing_ids}
 
+    enriched: List[tuple] = []
     _ensure_loaded()
     for c in _CHUNKS:
         cid = c.metadata.get("id")
         if cid in new_ids:
             if not c.metadata.get("is_latest", True):
                 continue
-            results.append(_to_result(c, new_ids[cid]))
+            enriched.append((_to_result(c, new_ids[cid]), new_ids[cid]))
 
-    edges = graph_module.get_edges()
-    edge_lookup = {}
-    for e in edges:
-        edge_lookup.setdefault(e["source_id"], []).append(e)
-        edge_lookup.setdefault(e["target_id"], []).append(e)
-
-    for r in results:
-        rid = r.get("id")
-        if rid and rid in edge_lookup:
-            r["relationships"] = [
-                {"relation": e["relation"],
-                 "linked_to": e["target_id"] if e["source_id"] == rid else e["source_id"],
-                 "confidence": e.get("confidence", 0)}
-                for e in edge_lookup[rid]
-            ]
+    enriched.sort(key=lambda x: x[1], reverse=True)
+    budget = max(0, max_total - len(results))
+    for item, _ in enriched[:budget]:
+        results.append(item)
 
     return results
 
@@ -310,7 +311,6 @@ def _to_result(chunk: MemoryChunk, score: float = 0.0) -> Dict[str, Any]:
         "score": score,
         "timestamp": chunk.metadata.get("timestamp"),
         "type": chunk.metadata.get("type", "episode"),
-        "metadata": chunk.metadata,
     }
 
 
@@ -393,10 +393,11 @@ def retrieve(
     if embedding is None or len(candidates) == 0:
         if query and _HAS_BM25 and candidates:
             bm25_ranked = _bm25_search(candidates, query, top_k)
-            base = [_to_result(c, score) for c, score in bm25_ranked[:top_k]]
-            return enrich_with_graph(base)
+            if bm25_ranked:
+                base = [_to_result(c, score) for c, score in bm25_ranked[:top_k]]
+                return enrich_with_graph(base)
 
-        candidates.sort(key=lambda c: c.metadata.get("timestamp", ""))
+        candidates.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
         base = [_to_result(c) for c in candidates[:top_k]]
         return enrich_with_graph(base)
 
@@ -437,11 +438,21 @@ def retrieve_smart(
     all_session = [c for c in _CHUNKS if c.session_id == session_id]
 
     facts = [c for c in all_session if c.metadata.get("type") == "fact"]
-    facts = [c for c in facts if c.metadata.get("is_latest", True)]
+    facts_after_latest = [c for c in facts if c.metadata.get("is_latest", True)]
+    facts = facts_after_latest
     facts = _temporal_filter(facts, time_point)
 
     for key, value in _chunk_metadata_filters(filters).items():
         facts = [c for c in facts if c.metadata.get(key) == value]
+
+    import logging
+    logging.getLogger("bittensor").info(
+        f"[retrieve_smart] session={session_id!r} "
+        f"total_chunks={len(_CHUNKS)} session_chunks={len(all_session)} "
+        f"type_fact={len([c for c in all_session if c.metadata.get('type') == 'fact'])} "
+        f"is_latest={len(facts_after_latest)} after_filters={len(facts)} "
+        f"embedding={'yes' if embedding else 'no'} query={query!r:.60}"
+    )
 
     fact_results: List[tuple] = []
     if embedding:
@@ -455,13 +466,18 @@ def retrieve_smart(
         else:
             fact_results = cosine_ranked
     else:
-        facts.sort(key=lambda c: c.metadata.get("timestamp", ""))
+        facts.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
         fact_results = [(c, 0.0) for c in facts]
 
     top_facts = fact_results[:top_k]
 
     fact_dicts = [_to_result(c, score) for c, score in top_facts]
-    fact_dicts = enrich_with_graph(fact_dicts, graph_hops=2)
+    try:
+        fact_dicts = enrich_with_graph(fact_dicts, graph_hops=2, max_total=top_k * 2)
+    except Exception as _ge:
+        logging.getLogger("bittensor").warning(
+            f"[retrieve_smart] enrich_with_graph failed, skipping: {_ge}"
+        )
 
     source_episode_ids = set()
     for c, _ in top_facts:
@@ -484,6 +500,9 @@ def retrieve_smart(
     for c in all_session:
         if c.metadata.get("type") == "anchor":
             anchor_dict = _to_result(c)
+            anchor_dict["intent"] = c.metadata.get("intent", "")
+            anchor_dict["key_facts"] = c.metadata.get("key_facts", [])
+            anchor_dict["key_decisions"] = c.metadata.get("key_decisions", [])
             break
 
     return [{

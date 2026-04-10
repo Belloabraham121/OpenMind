@@ -13,7 +13,7 @@ import {
   setSessionCookie,
 } from "@/lib/auth-session"
 import { recordActivity } from "@/lib/record-activity"
-import { authWaitlistBlockedResponse, isAuthOpen } from "@/lib/auth-access"
+import { authWaitlistBlockedResponse } from "@/lib/auth-access"
 
 export const runtime = "nodejs"
 
@@ -23,10 +23,6 @@ type Body = {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthOpen()) {
-    return authWaitlistBlockedResponse()
-  }
-
   await ensureAuthIndexes()
 
   let body: Body = {}
@@ -49,14 +45,21 @@ export async function POST(request: Request) {
   }
 
   const { users, sessions } = await authCollections()
-  const user = await users.findOne(email ? { email } : { phone: phone! })
+
+  let user = await users.findOne(email ? { email } : { phone: phone! })
+  // For email-based login, enforce whitelist membership first:
+  // if email is not present in MongoDB, block immediately.
+  if (email && !user) {
+    return authWaitlistBlockedResponse()
+  }
+
   if (!user) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 })
   }
 
   const isValid = await bcrypt.compare(password, user.passwordHash)
   if (!isValid) {
-    return NextResponse.json({ error: "Invalid credentials." }, { status: 401 })
+    return NextResponse.json({ error: "Incorrect password." }, { status: 401 })
   }
 
   const token = createSessionToken()

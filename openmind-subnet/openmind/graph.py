@@ -23,7 +23,21 @@ _GRAPH_DIR = BASE_DIR / "_graph"
 _EDGES_FILE = _GRAPH_DIR / "edges.jsonl"
 
 _EDGES: List[Dict[str, Any]] = []
+_ADJ: Dict[str, List[tuple]] = {}
 _edges_loaded = False
+
+
+def _rebuild_adj() -> None:
+    """Rebuild the adjacency index from _EDGES for O(degree) neighbor lookups."""
+    _ADJ.clear()
+    for edge in _EDGES:
+        sid = edge.get("source_id", "")
+        tid = edge.get("target_id", "")
+        conf = edge.get("confidence", 0.5)
+        if sid:
+            _ADJ.setdefault(sid, []).append((tid, conf))
+        if tid:
+            _ADJ.setdefault(tid, []).append((sid, conf))
 
 
 def _ensure_edges_loaded() -> None:
@@ -39,6 +53,7 @@ def _ensure_edges_loaded() -> None:
                     _EDGES.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
+    _rebuild_adj()
 
 
 def _save_edge(edge: Dict[str, Any]) -> None:
@@ -46,6 +61,13 @@ def _save_edge(edge: Dict[str, Any]) -> None:
     with _EDGES_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(edge, ensure_ascii=False) + "\n")
     _EDGES.append(edge)
+    sid = edge.get("source_id", "")
+    tid = edge.get("target_id", "")
+    conf = edge.get("confidence", 0.5)
+    if sid:
+        _ADJ.setdefault(sid, []).append((tid, conf))
+    if tid:
+        _ADJ.setdefault(tid, []).append((sid, conf))
 
 
 def get_edges() -> List[Dict[str, Any]]:
@@ -148,6 +170,8 @@ def pagerank_walk(
 
     Returns a dict of {fact_id: score} for all reachable facts.
     Seed facts start with score 1.0; each hop decays by ``decay``.
+    Uses an adjacency index for O(degree) neighbor lookups instead of
+    scanning all edges.
     """
     _ensure_edges_loaded()
 
@@ -157,17 +181,12 @@ def pagerank_walk(
 
     frontier = set(seed_ids)
     for hop in range(max_hops):
-        next_frontier = set()
+        next_frontier: set = set()
         hop_score = decay ** (hop + 1)
         for fid in frontier:
-            for edge in _EDGES:
-                neighbor = None
-                if edge["source_id"] == fid:
-                    neighbor = edge["target_id"]
-                elif edge["target_id"] == fid:
-                    neighbor = edge["source_id"]
+            for neighbor, conf in _ADJ.get(fid, []):
                 if neighbor and neighbor not in scores:
-                    scores[neighbor] = hop_score * edge.get("confidence", 0.5)
+                    scores[neighbor] = hop_score * conf
                     next_frontier.add(neighbor)
         frontier = next_frontier
         if not frontier:

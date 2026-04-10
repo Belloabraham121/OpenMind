@@ -1,0 +1,41 @@
+---
+description: Use OpenMind memory proactively in every conversation.
+alwaysApply: true
+---
+
+When OpenMind MCP tools are available, use memory in a proactive loop:
+
+1) Session context is auto-injected:
+- At conversation start, the `sessionStart` hook automatically fetches the session
+  anchor (intent, key topics, decisions, fact count) and injects it as context.
+- Use this context to understand what topics and decisions exist in memory.
+- When the injected context is relevant to the user's question, call `openmind_query`
+  with a focused query to retrieve specific facts and sources.
+
+2) Recall on demand:
+- For explicit memory-intent prompts (for example: "do you remember", "what did we discuss",
+  "from our previous chat", "earlier you said"), you MUST run at least one `openmind_query`
+  attempt before answering.
+- Do not reply with "I don't remember" / "I can't recall past chats" until after a recall
+  attempt has been made. If recall returns no relevant items, state that you checked OpenMind
+  memory and found no matching results.
+- If in Next.js BFF mode, `session_id` may be omitted so the app derives the correct
+  namespace from the authenticated API key.
+
+3) Ground the answer:
+- Use retrieved memories only when relevant and non-contradictory with the latest user message.
+- If memory conflicts with new user input, prefer the latest explicit user instruction.
+
+4) Save durable outcomes:
+- With the OpenMind Cursor plugin installed, each assistant reply is auto-ingested via the
+  `afterAgentResponse` hook (full message text, redacted), and agent file edits via
+  `afterFileEdit` (path + patch hunks, noise paths skipped). You do not need to duplicate the
+  entire answer in `openmind_store` unless the user explicitly asks to persist it.
+- Optionally still call `openmind_store` for short, structured durable facts when useful:
+  - preferences, decisions, confirmed constraints, identifiers that matter next session
+- Never store raw secrets (API keys, passwords, tokens, credentials).
+
+5) Keep memory quality high:
+- Store concise, non-redundant updates.
+- Do not spam memory for trivial or ephemeral details.
+
