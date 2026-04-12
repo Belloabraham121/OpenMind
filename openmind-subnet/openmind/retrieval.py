@@ -314,6 +314,23 @@ def _to_result(chunk: MemoryChunk, score: float = 0.0) -> Dict[str, Any]:
     }
 
 
+def _deduplicate_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remove duplicate results based on content hash, keeping the highest-scored copy."""
+    import hashlib
+    seen: Dict[str, int] = {}
+    deduped: List[Dict[str, Any]] = []
+    for r in results:
+        h = hashlib.sha256((r.get("content") or "").encode("utf-8")).hexdigest()[:16]
+        if h in seen:
+            idx = seen[h]
+            if r.get("score", 0) > deduped[idx].get("score", 0):
+                deduped[idx] = r
+            continue
+        seen[h] = len(deduped)
+        deduped.append(r)
+    return deduped
+
+
 def count_facts_in_session(session_id: str) -> int:
     """Number of fact chunks for ``session_id``."""
     _ensure_loaded()
@@ -387,19 +404,22 @@ def retrieve(
 
     candidates = _temporal_filter(candidates, as_of_timestamp)
 
-    # If we don't have an embedding, still try keyword retrieval (BM25) when a
-    # query is provided. Falling back to timestamp order makes benchmark
-    # retrieval effectively random w.r.t. the question.
-    if embedding is None or len(candidates) == 0:
+    has_embedding = (
+        embedding is not None
+        and len(embedding) > 0
+        and any(v != 0.0 for v in embedding[:10])
+    )
+
+    if not has_embedding or len(candidates) == 0:
         if query and _HAS_BM25 and candidates:
             bm25_ranked = _bm25_search(candidates, query, top_k)
             if bm25_ranked:
                 base = [_to_result(c, score) for c, score in bm25_ranked[:top_k]]
-                return enrich_with_graph(base)
+                return _deduplicate_results(enrich_with_graph(base))
 
         candidates.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
         base = [_to_result(c) for c in candidates[:top_k]]
-        return enrich_with_graph(base)
+        return _deduplicate_results(enrich_with_graph(base))
 
     q_vec = np.array(embedding, dtype=np.float32)
     cosine_ranked = [(c, _cosine_sim(q_vec, c.embedding)) for c in candidates]
@@ -412,7 +432,7 @@ def retrieve(
     else:
         base = [_to_result(c, score) for c, score in cosine_ranked[:top_k]]
 
-    return enrich_with_graph(base)
+    return _deduplicate_results(enrich_with_graph(base))
 
 
 # ---- Two-phase smart retrieval -----------------------------------------------
@@ -446,28 +466,46 @@ def retrieve_smart(
         facts = [c for c in facts if c.metadata.get(key) == value]
 
     import logging
-    logging.getLogger("bittensor").info(
+    _log = logging.getLogger("bittensor")
+
+    has_embedding = (
+        embedding is not None
+        and len(embedding) > 0
+        and any(v != 0.0 for v in embedding[:10])
+    )
+
+    # When no facts exist (e.g. extraction was skipped), search episodes directly.
+    search_targets = facts
+    if not search_targets:
+        search_targets = [c for c in all_session if c.metadata.get("type") == "episode"]
+
+    _log.info(
         f"[retrieve_smart] session={session_id!r} "
         f"total_chunks={len(_CHUNKS)} session_chunks={len(all_session)} "
         f"type_fact={len([c for c in all_session if c.metadata.get('type') == 'fact'])} "
         f"is_latest={len(facts_after_latest)} after_filters={len(facts)} "
-        f"embedding={'yes' if embedding else 'no'} query={query!r:.60}"
+        f"search_targets={len(search_targets)} "
+        f"embedding={'yes' if has_embedding else 'no'} query={query!r:.60}"
     )
 
     fact_results: List[tuple] = []
-    if embedding:
+    if has_embedding:
         q_vec = np.array(embedding, dtype=np.float32)
-        cosine_ranked = [(c, _cosine_sim(q_vec, c.embedding)) for c in facts]
+        cosine_ranked = [(c, _cosine_sim(q_vec, c.embedding)) for c in search_targets]
         cosine_ranked.sort(key=lambda x: x[1], reverse=True)
 
         if query and _HAS_BM25:
-            bm25_ranked = _bm25_search(facts, query, top_k)
+            bm25_ranked = _bm25_search(search_targets, query, top_k)
             fact_results = _reciprocal_rank_fusion(cosine_ranked[:top_k], bm25_ranked)
         else:
             fact_results = cosine_ranked
     else:
-        facts.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
-        fact_results = [(c, 0.0) for c in facts]
+        if query and _HAS_BM25 and search_targets:
+            bm25_ranked = _bm25_search(search_targets, query, top_k)
+            fact_results = bm25_ranked if bm25_ranked else [(c, 0.0) for c in search_targets]
+        else:
+            search_targets.sort(key=lambda c: c.metadata.get("timestamp", ""), reverse=True)
+            fact_results = [(c, 0.0) for c in search_targets]
 
     top_facts = fact_results[:top_k]
 
@@ -504,6 +542,9 @@ def retrieve_smart(
             anchor_dict["key_facts"] = c.metadata.get("key_facts", [])
             anchor_dict["key_decisions"] = c.metadata.get("key_decisions", [])
             break
+
+    fact_dicts = _deduplicate_results(fact_dicts)
+    source_dicts = _deduplicate_results(source_dicts)
 
     return [{
         "anchor": anchor_dict,

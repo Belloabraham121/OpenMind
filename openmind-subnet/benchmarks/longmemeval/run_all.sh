@@ -21,8 +21,12 @@ CALL_DELAY="${CALL_DELAY:-0.5}"
 MAX_QUESTIONS="${MAX_QUESTIONS:-0}"
 SKIP_INGEST="${SKIP_INGEST:-false}"
 SKIP_EXTRACTION="${SKIP_EXTRACTION:-false}"
+SKIP_EMBEDDINGS="${SKIP_EMBEDDINGS:-false}"
+TURNS_PER_CHUNK="${TURNS_PER_CHUNK:-4}"
 OPENMIND_STORAGE_BACKEND="${OPENMIND_STORAGE_BACKEND:-legacy}"
 OPENMIND_STORAGE_DUAL_WRITE="${OPENMIND_STORAGE_DUAL_WRITE:-false}"
+export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
+export EMBED_MODEL="${EMBED_MODEL:-nomic-embed-text}"
 
 BASE_URL_FLAG=""
 if [ -n "${OPENAI_BASE_URL:-}" ]; then
@@ -44,6 +48,11 @@ if [ "$SKIP_EXTRACTION" = "true" ]; then
     SKIP_EXTRACT_FLAG="--skip-extraction"
 fi
 
+SKIP_EMBED_FLAG=""
+if [ "$SKIP_EMBEDDINGS" = "true" ]; then
+    SKIP_EMBED_FLAG="--skip-embeddings"
+fi
+
 DUAL_WRITE_FLAG=""
 if [ "$OPENMIND_STORAGE_DUAL_WRITE" = "true" ]; then
     DUAL_WRITE_FLAG="--dual-write"
@@ -60,15 +69,16 @@ echo "  Max Qs:      ${MAX_QUESTIONS} (0=all)"
 echo "  Call Delay:  ${CALL_DELAY}s"
 echo "  Skip Ingest: $SKIP_INGEST"
 echo "  Skip Extract:$SKIP_EXTRACTION"
+echo "  Skip Embed:  $SKIP_EMBEDDINGS"
+echo "  Turns/Chunk: $TURNS_PER_CHUNK"
+echo "  Ollama:      $OLLAMA_URL ($EMBED_MODEL)"
 echo "  Storage:     $OPENMIND_STORAGE_BACKEND (dual_write=$OPENMIND_STORAGE_DUAL_WRITE)"
 echo "  Base:        ${OPENAI_BASE_URL:-api.openai.com}"
 echo "============================================"
 echo
 
-# If we skip extraction, we won't have facts/anchors, so smart retrieval will return empty.
-if [ "$SKIP_EXTRACTION" = "true" ]; then
-    SMART="false"
-fi
+# Smart retrieval now falls back to episode search when no facts exist,
+# so it works even with SKIP_EXTRACTION=true.
 
 # Step 0: Check data file exists
 if [ ! -f "$DATA_FILE" ]; then
@@ -91,8 +101,11 @@ else
     echo "[1/5] Ingesting sessions (direct mode — no network)..."
     python direct_ingest.py \
         --data "$DATA_FILE" \
+        --clean \
         $MAX_Q_FLAG \
         $SKIP_EXTRACT_FLAG \
+        $SKIP_EMBED_FLAG \
+        --turns-per-chunk "$TURNS_PER_CHUNK" \
         --storage-backend "$OPENMIND_STORAGE_BACKEND" \
         $DUAL_WRITE_FLAG
     echo
@@ -114,6 +127,7 @@ python retrieve.py \
     --api-url "$API_URL" \
     --top-k "$TOP_K" \
     $SMART_FLAG \
+    $SKIP_EMBED_FLAG \
     $MAX_Q_FLAG
 echo
 

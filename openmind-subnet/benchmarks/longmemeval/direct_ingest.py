@@ -6,8 +6,11 @@ Writes directly to the miner's on-disk storage using the ``openmind``
 modules. After running this script, restart the miner so it loads the
 new data into memory.
 
-This is ~50x faster than API-based ingestion because it skips the
-Bittensor Dendrite/Axon round-trip for each store call.
+Key improvements over the naive approach:
+- Chunks conversations per-turn-pair instead of per-session, so each
+  chunk is small enough for retrieval truncation to preserve the answer.
+- Generates real embeddings via a local Ollama model (nomic-embed-text)
+  so cosine similarity search actually works.
 """
 
 import argparse
@@ -15,10 +18,13 @@ import datetime
 import json
 import os
 import sys
+import time
 import uuid
 from pathlib import Path
+from typing import List
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
-# Add the openmind-subnet root to sys.path so we can import modules.
 _SUBNET_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_SUBNET_ROOT))
 
@@ -30,6 +36,32 @@ os.environ.setdefault(
 from openmind import storage, storage_v2, extraction, graph  # noqa: E402
 from tqdm import tqdm  # noqa: E402
 
+_OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+_EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
+_EMBED_BATCH_SIZE = 4
+_EMBED_RETRY = 3
+
+
+def _embed_text(text: str) -> List[float]:
+    """Get embedding from local Ollama instance."""
+    payload = json.dumps({"model": _EMBED_MODEL, "prompt": text[:8000]}).encode()
+    req = Request(
+        f"{_OLLAMA_URL}/api/embeddings",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    for attempt in range(_EMBED_RETRY):
+        try:
+            with urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read())
+            return data["embedding"]
+        except (URLError, KeyError, OSError) as exc:
+            if attempt == _EMBED_RETRY - 1:
+                print(f"  WARNING: embedding failed after {_EMBED_RETRY} retries: {exc}", file=sys.stderr)
+                return []
+            time.sleep(1.0 * (attempt + 1))
+    return []
+
 
 def _select_storage(backend: str):
     b = (backend or "legacy").lower()
@@ -38,15 +70,27 @@ def _select_storage(backend: str):
     return storage
 
 
-def _format_session(turns: list) -> str:
-    """Concatenate conversation turns with role markers."""
-    parts = []
+def _chunk_session_turns(turns: list, max_turns_per_chunk: int = 4) -> List[str]:
+    """Split a multi-turn session into small chunks of turn-pairs.
+
+    Each chunk contains up to ``max_turns_per_chunk`` turns (2 turn-pairs)
+    so that each chunk is short enough that answers survive the retrieval
+    truncation limit (4000 chars).
+    """
+    chunks = []
+    buffer = []
     for t in turns:
         role = t.get("role", "user")
         content = t.get("content", "")
-        if content:
-            parts.append(f"[{role}] {content}")
-    return "\n\n".join(parts)
+        if not content:
+            continue
+        buffer.append(f"[{role}] {content}")
+        if len(buffer) >= max_turns_per_chunk:
+            chunks.append("\n\n".join(buffer))
+            buffer = []
+    if buffer:
+        chunks.append("\n\n".join(buffer))
+    return chunks
 
 
 def _store_chunk(session_id, content, embedding, metadata, primary_storage, secondary_storage=None):
@@ -70,12 +114,31 @@ def _store_chunk(session_id, content, embedding, metadata, primary_storage, seco
             )
 
 
+def _clean_storage(storage_dir: Path, question_ids: list):
+    """Remove previously ingested data for the given question IDs."""
+    import shutil
+    removed = 0
+    for qid in question_ids:
+        qid_dir = storage_dir / qid
+        if qid_dir.is_dir():
+            shutil.rmtree(qid_dir, ignore_errors=True)
+            removed += 1
+    # Also remove any sqlite db so we don't mix old + new data
+    for db in storage_dir.glob("*.db"):
+        db.unlink(missing_ok=True)
+    if removed:
+        print(f"Cleaned {removed} old session directories from {storage_dir}")
+
+
 def direct_ingest(
     data_path: str,
     max_questions: int = 0,
     skip_extraction: bool = False,
     storage_backend: str = "legacy",
     dual_write: bool = False,
+    skip_embeddings: bool = False,
+    turns_per_chunk: int = 4,
+    clean: bool = False,
 ):
     primary_storage = _select_storage(storage_backend)
     secondary_storage = None
@@ -89,13 +152,23 @@ def direct_ingest(
     if max_questions > 0:
         data = data[:max_questions]
 
+    if clean:
+        all_qids = [q.get("question_id") or q.get("id", "") for q in data]
+        _clean_storage(Path(primary_storage.BASE_DIR), all_qids)
+
+    if not skip_embeddings:
+        test_emb = _embed_text("test")
+        if not test_emb:
+            print("ERROR: Could not connect to Ollama. Set OLLAMA_URL or use --skip-embeddings.", file=sys.stderr)
+            sys.exit(1)
+        print(f"Embedding model: {_EMBED_MODEL} (dim={len(test_emb)}) via {_OLLAMA_URL}")
+
     total_episodes = 0
     total_facts = 0
 
     for question in tqdm(data, desc="Direct ingesting"):
         qid = question.get("question_id") or question.get("id", "")
         haystack_sessions = question.get("haystack_sessions", [])
-        haystack_ids = question.get("haystack_session_ids", [])
 
         if not haystack_sessions:
             continue
@@ -106,94 +179,99 @@ def direct_ingest(
             if not session_turns:
                 continue
 
-            text = _format_session(session_turns)
-            if not text.strip():
-                continue
+            chunks = _chunk_session_turns(session_turns, max_turns_per_chunk=turns_per_chunk)
 
-            chunk_id = str(uuid.uuid4())
-            ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            for chunk_idx, text in enumerate(chunks):
+                if not text.strip():
+                    continue
 
-            _store_chunk(
-                session_id=qid,
-                content=text,
-                embedding=[],
-                primary_storage=primary_storage,
-                secondary_storage=secondary_storage,
-                metadata={
-                    "id": chunk_id,
-                    "type": "episode",
-                    "role": "user",
-                    "timestamp": ts,
-                    "recorded_at": ts,
-                    "event_at": None,
-                    "multimodal_type": None,
-                },
-            )
-            total_episodes += 1
+                chunk_id = str(uuid.uuid4())
+                ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                embedding = _embed_text(text) if not skip_embeddings else []
 
-            if not skip_extraction:
-                try:
-                    facts = extraction.extract_facts(
-                        content=text,
-                        episode_id=chunk_id,
-                        session_id=qid,
-                        role="user",
-                        recorded_at=ts,
-                    )
-                except Exception:
-                    facts = []
+                _store_chunk(
+                    session_id=qid,
+                    content=text,
+                    embedding=embedding,
+                    primary_storage=primary_storage,
+                    secondary_storage=secondary_storage,
+                    metadata={
+                        "id": chunk_id,
+                        "type": "episode",
+                        "role": "user",
+                        "timestamp": ts,
+                        "recorded_at": ts,
+                        "event_at": None,
+                        "multimodal_type": None,
+                    },
+                )
+                total_episodes += 1
 
-                for fact in facts:
-                    _store_chunk(
-                        session_id=qid,
-                        content=fact["content"],
-                        embedding=[],
-                        primary_storage=primary_storage,
-                        secondary_storage=secondary_storage,
-                        metadata={
-                            "id": fact["id"],
-                            "type": "fact",
-                            "source_episode_id": fact["source_episode_id"],
-                            "subject": fact["subject"],
-                            "predicate": fact["predicate"],
-                            "object": fact["object"],
-                            "confidence": fact["confidence"],
-                            "recorded_at": fact["recorded_at"],
-                            "event_at": fact["event_at"],
-                            "valid_from": fact["valid_from"],
-                            "valid_until": fact["valid_until"],
-                            "is_latest": True,
-                            "role": fact["role"],
-                            "fact_keys": fact["fact_keys"],
-                            "timestamp": ts,
-                        },
-                    )
-                    total_facts += 1
+                if not skip_extraction:
+                    try:
+                        facts = extraction.extract_facts(
+                            content=text,
+                            episode_id=chunk_id,
+                            session_id=qid,
+                            role="user",
+                            recorded_at=ts,
+                        )
+                    except Exception:
+                        facts = []
 
-                    edges = graph.detect_relationships(fact, session_facts)
-                    for edge in edges:
-                        if edge["relation"] == "supersedes":
-                            old_id = edge["target_id"]
-                            primary_storage.update_chunk_metadata(
-                                qid, old_id,
-                                {"is_latest": False, "valid_until": ts},
-                            )
-                            if secondary_storage is not None:
-                                secondary_storage.update_chunk_metadata(
+                    for fact in facts:
+                        fact_emb = _embed_text(fact["content"]) if not skip_embeddings else []
+                        _store_chunk(
+                            session_id=qid,
+                            content=fact["content"],
+                            embedding=fact_emb,
+                            primary_storage=primary_storage,
+                            secondary_storage=secondary_storage,
+                            metadata={
+                                "id": fact["id"],
+                                "type": "fact",
+                                "source_episode_id": fact["source_episode_id"],
+                                "subject": fact["subject"],
+                                "predicate": fact["predicate"],
+                                "object": fact["object"],
+                                "confidence": fact["confidence"],
+                                "recorded_at": fact["recorded_at"],
+                                "event_at": fact["event_at"],
+                                "valid_from": fact["valid_from"],
+                                "valid_until": fact["valid_until"],
+                                "is_latest": True,
+                                "role": fact["role"],
+                                "fact_keys": fact["fact_keys"],
+                                "timestamp": ts,
+                            },
+                        )
+                        total_facts += 1
+
+                        edges = graph.detect_relationships(fact, session_facts)
+                        for edge in edges:
+                            if edge["relation"] == "supersedes":
+                                old_id = edge["target_id"]
+                                primary_storage.update_chunk_metadata(
                                     qid, old_id,
                                     {"is_latest": False, "valid_until": ts},
                                 )
+                                if secondary_storage is not None:
+                                    secondary_storage.update_chunk_metadata(
+                                        qid, old_id,
+                                        {"is_latest": False, "valid_until": ts},
+                                    )
 
-                    session_facts.append(fact)
+                        session_facts.append(fact)
 
         if not skip_extraction and session_facts:
             try:
                 anchor = extraction.generate_anchor(qid, session_facts, None)
                 if anchor:
+                    anchor_emb = _embed_text(anchor["content"]) if not skip_embeddings else []
                     _store_chunk(
                         session_id=qid,
                         content=anchor["content"],
-                        embedding=[],
+                        embedding=anchor_emb,
                         primary_storage=primary_storage,
                         secondary_storage=secondary_storage,
                         metadata=anchor,
@@ -211,6 +289,9 @@ def direct_ingest(
     )
     print(
         f"Storage dir: {primary_storage.BASE_DIR}"
+    )
+    print(
+        f"Embeddings: {'skipped' if skip_embeddings else f'{_EMBED_MODEL} via {_OLLAMA_URL}'}"
     )
     print(
         "\n*** IMPORTANT: Restart the miner so it loads the new data! ***"
@@ -238,6 +319,17 @@ def main():
         help="Skip fact extraction (store raw episodes only — faster but no smart retrieval)",
     )
     parser.add_argument(
+        "--skip-embeddings",
+        action="store_true",
+        help="Skip embedding generation (fall back to BM25 keyword search only)",
+    )
+    parser.add_argument(
+        "--turns-per-chunk",
+        type=int,
+        default=4,
+        help="Max conversation turns per chunk (lower = more precise retrieval, more chunks)",
+    )
+    parser.add_argument(
         "--storage-backend",
         default=os.environ.get("OPENMIND_STORAGE_BACKEND", "legacy"),
         choices=["legacy", "sqlite"],
@@ -249,6 +341,11 @@ def main():
         default=os.environ.get("OPENMIND_STORAGE_DUAL_WRITE", "false").lower() == "true",
         help="Write to both legacy and sqlite backends",
     )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Remove old ingested data for the same question IDs before ingesting",
+    )
     args = parser.parse_args()
     direct_ingest(
         args.data,
@@ -256,6 +353,9 @@ def main():
         args.skip_extraction,
         args.storage_backend,
         args.dual_write,
+        args.skip_embeddings,
+        args.turns_per_chunk,
+        args.clean,
     )
 
 
