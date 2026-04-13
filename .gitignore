@@ -3,8 +3,8 @@ bittensor-subnet-template/
 .cursor/openmind-hook.env
 .DS_Store
 .vscode/
-LongMemEval/
 .pnpm-store/
 DETERMINISTIC_SHARD_MERGE_PLAN.md
 pitch.md
 run.md
+memorybench/
