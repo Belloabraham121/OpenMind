@@ -33,25 +33,43 @@ from tqdm import tqdm
 
 _OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 _EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
+_QUERY_EMBED_DELAY = float(os.environ.get("OLLAMA_QUERY_EMBED_DELAY_SEC", "0.1"))
 
 
 def _embed_query(text: str) -> List[float]:
-    """Get query embedding from local Ollama instance."""
+    """Get query embedding from local Ollama (paced to avoid overloading the server)."""
+    from urllib.error import HTTPError
+
     payload = json.dumps({"model": _EMBED_MODEL, "prompt": text[:8000]}).encode()
-    req = Request(
-        f"{_OLLAMA_URL}/api/embeddings",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-    )
-    for attempt in range(3):
+    url = f"{_OLLAMA_URL}/api/embeddings"
+    last_err = None
+    for attempt in range(5):
+        req = Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
         try:
-            with urlopen(req, timeout=60) as resp:
+            with urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read())
-            return data["embedding"]
-        except (URLError, KeyError, OSError):
-            if attempt == 2:
-                return []
-            time.sleep(1.0 * (attempt + 1))
+            emb = data.get("embedding") or []
+            if emb:
+                if _QUERY_EMBED_DELAY > 0:
+                    time.sleep(_QUERY_EMBED_DELAY)
+                return emb
+        except HTTPError as exc:
+            last_err = exc
+            code = getattr(exc, "code", None)
+            if code in (429, 500, 502, 503):
+                wait = min(30.0, 2.0 * (2 ** attempt))
+            else:
+                wait = 1.0 * (attempt + 1)
+            if attempt < 4:
+                time.sleep(wait)
+        except (URLError, KeyError, OSError, json.JSONDecodeError) as exc:
+            last_err = exc
+            if attempt < 4:
+                time.sleep(1.0 * (attempt + 1))
     return []
 
 
