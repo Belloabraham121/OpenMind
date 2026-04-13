@@ -12,8 +12,9 @@ fi
 
 API_URL="${API_URL:-http://localhost:8090}"
 DATA_FILE="${DATA_FILE:-longmemeval_s_cleaned.json}"
-MODEL="${MODEL:-gpt-4o-mini}"
-JUDGE_MODEL="${JUDGE_MODEL:-gpt-4o-mini}"
+# Match SuperMemory README comparison (gpt-4o); override with MODEL=gpt-4o-mini for cheaper runs.
+MODEL="${MODEL:-gpt-4o}"
+JUDGE_MODEL="${JUDGE_MODEL:-gpt-4o}"
 LABEL="${LABEL:-$(date +%Y%m%d-%H%M%S)}"
 SMART="${SMART:-true}"
 TOP_K="${TOP_K:-20}"
@@ -27,6 +28,9 @@ OPENMIND_STORAGE_BACKEND="${OPENMIND_STORAGE_BACKEND:-legacy}"
 OPENMIND_STORAGE_DUAL_WRITE="${OPENMIND_STORAGE_DUAL_WRITE:-false}"
 export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
 export EMBED_MODEL="${EMBED_MODEL:-nomic-embed-text}"
+# Pace Ollama during ingest / retrieve to reduce HTTP 500 under burst load.
+export OLLAMA_EMBED_DELAY_SEC="${OLLAMA_EMBED_DELAY_SEC:-0.25}"
+export OLLAMA_QUERY_EMBED_DELAY_SEC="${OLLAMA_QUERY_EMBED_DELAY_SEC:-0.1}"
 
 BASE_URL_FLAG=""
 if [ -n "${OPENAI_BASE_URL:-}" ]; then
@@ -71,7 +75,7 @@ echo "  Skip Ingest: $SKIP_INGEST"
 echo "  Skip Extract:$SKIP_EXTRACTION"
 echo "  Skip Embed:  $SKIP_EMBEDDINGS"
 echo "  Turns/Chunk: $TURNS_PER_CHUNK"
-echo "  Ollama:      $OLLAMA_URL ($EMBED_MODEL)"
+echo "  Ollama:      $OLLAMA_URL ($EMBED_MODEL) embed_delay=${OLLAMA_EMBED_DELAY_SEC}s query_delay=${OLLAMA_QUERY_EMBED_DELAY_SEC}s"
 echo "  Storage:     $OPENMIND_STORAGE_BACKEND (dual_write=$OPENMIND_STORAGE_DUAL_WRITE)"
 echo "  Base:        ${OPENAI_BASE_URL:-api.openai.com}"
 echo "============================================"
@@ -102,6 +106,7 @@ else
     python direct_ingest.py \
         --data "$DATA_FILE" \
         --clean \
+        --embed-delay "$OLLAMA_EMBED_DELAY_SEC" \
         $MAX_Q_FLAG \
         $SKIP_EXTRACT_FLAG \
         $SKIP_EMBED_FLAG \

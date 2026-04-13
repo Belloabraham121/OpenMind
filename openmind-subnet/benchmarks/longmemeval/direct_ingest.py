@@ -21,7 +21,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -38,28 +38,50 @@ from tqdm import tqdm  # noqa: E402
 
 _OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 _EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
-_EMBED_BATCH_SIZE = 4
-_EMBED_RETRY = 3
+_EMBED_RETRY = 5
+# Pause after each successful embed so Ollama is not flooded (reduces HTTP 500 under load).
+_EMBED_DELAY_SEC = float(os.environ.get("OLLAMA_EMBED_DELAY_SEC", "0.25"))
 
 
-def _embed_text(text: str) -> List[float]:
-    """Get embedding from local Ollama instance."""
+def _embed_text(text: str, delay_sec: Optional[float] = None) -> List[float]:
+    """Get embedding from local Ollama instance (fresh POST each retry)."""
+    if delay_sec is None:
+        delay_sec = _EMBED_DELAY_SEC
     payload = json.dumps({"model": _EMBED_MODEL, "prompt": text[:8000]}).encode()
-    req = Request(
-        f"{_OLLAMA_URL}/api/embeddings",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-    )
+    url = f"{_OLLAMA_URL}/api/embeddings"
+    from urllib.error import HTTPError
+
+    last_err: Optional[BaseException] = None
     for attempt in range(_EMBED_RETRY):
+        req = Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
         try:
-            with urlopen(req, timeout=60) as resp:
+            with urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read())
-            return data["embedding"]
-        except (URLError, KeyError, OSError) as exc:
-            if attempt == _EMBED_RETRY - 1:
-                print(f"  WARNING: embedding failed after {_EMBED_RETRY} retries: {exc}", file=sys.stderr)
-                return []
-            time.sleep(1.0 * (attempt + 1))
+            emb = data.get("embedding") or []
+            if emb:
+                if delay_sec > 0:
+                    time.sleep(delay_sec)
+                return emb
+        except HTTPError as exc:
+            last_err = exc
+            code = getattr(exc, "code", None)
+            # Server overload / model busy — back off longer than generic errors
+            if code in (429, 500, 502, 503):
+                wait = min(30.0, 2.0 * (2 ** attempt))
+            else:
+                wait = 1.0 * (attempt + 1)
+            if attempt < _EMBED_RETRY - 1:
+                time.sleep(wait)
+        except (URLError, KeyError, OSError, json.JSONDecodeError) as exc:
+            last_err = exc
+            if attempt < _EMBED_RETRY - 1:
+                time.sleep(1.0 * (attempt + 1))
+
+    print(f"  WARNING: embedding failed after {_EMBED_RETRY} retries: {last_err}", file=sys.stderr)
     return []
 
 
@@ -139,7 +161,12 @@ def direct_ingest(
     skip_embeddings: bool = False,
     turns_per_chunk: int = 4,
     clean: bool = False,
+    embed_delay_sec: Optional[float] = None,
 ):
+    global _EMBED_DELAY_SEC
+    if embed_delay_sec is not None:
+        _EMBED_DELAY_SEC = float(embed_delay_sec)
+
     primary_storage = _select_storage(storage_backend)
     secondary_storage = None
     if dual_write:
@@ -161,7 +188,10 @@ def direct_ingest(
         if not test_emb:
             print("ERROR: Could not connect to Ollama. Set OLLAMA_URL or use --skip-embeddings.", file=sys.stderr)
             sys.exit(1)
-        print(f"Embedding model: {_EMBED_MODEL} (dim={len(test_emb)}) via {_OLLAMA_URL}")
+        print(
+            f"Embedding model: {_EMBED_MODEL} (dim={len(test_emb)}) via {_OLLAMA_URL} "
+            f"(delay={_EMBED_DELAY_SEC}s between calls)"
+        )
 
     total_episodes = 0
     total_facts = 0
@@ -346,6 +376,12 @@ def main():
         action="store_true",
         help="Remove old ingested data for the same question IDs before ingesting",
     )
+    parser.add_argument(
+        "--embed-delay",
+        type=float,
+        default=None,
+        help="Seconds to sleep after each successful Ollama embed (default: OLLAMA_EMBED_DELAY_SEC or 0.25)",
+    )
     args = parser.parse_args()
     direct_ingest(
         args.data,
@@ -356,6 +392,7 @@ def main():
         args.skip_embeddings,
         args.turns_per_chunk,
         args.clean,
+        args.embed_delay,
     )
 
 
