@@ -10,7 +10,8 @@ const features = [
   {
     number: "01",
     title: "Persistent, Encrypted Memory",
-    description: "Store full, uncompressed context as encrypted shards. Miners never see plaintext. Your agent's memories remain secure and queryable across months and years.",
+    description:
+      "Every agent gets a private, persistent, self-learning external brain that continuously remembers, retrieves, and improves from experience. Store full, uncompressed context as encrypted shards so memories remain secure and queryable across months and years.",
     visual: "security",
   },
   {
