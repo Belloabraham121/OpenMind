@@ -53,7 +53,7 @@ export function TestimonialsSection() {
   return (
     <section className="relative py-32 lg:py-40 border-t border-foreground/10 lg:pb-14">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
-        {/* Section Label */}
+        {/* Section Label
         <div className="flex items-center gap-4 mb-16">
           <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             What people say
@@ -63,6 +63,7 @@ export function TestimonialsSection() {
             {String(activeIndex + 1).padStart(2, "0")} / {String(testimonials.length).padStart(2, "0")}
           </span>
         </div>
+        */}
 
         {/* Main Quote */}
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-20">
